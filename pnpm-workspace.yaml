@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+  - agent
+  - executor
+  - apps/*
+allowBuilds:
+  esbuild: true
