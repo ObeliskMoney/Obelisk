@@ -22,7 +22,7 @@ export const C = {
 export const SANS = inter.fontFamily;
 export const MONO = mono.fontFamily;
 
-export const EXPLORER = "explorer.testnet.chain.robinhood.com";
+export const EXPLORER = "explorer.mainnet.chain.robinhood.com";
 
 /** Video version of the hero background: light gray + fluted glass at 31 degrees + a slowly moving orange blob. */
 export function Backdrop({ tone = "light" }: { tone?: "light" | "navy" }) {
