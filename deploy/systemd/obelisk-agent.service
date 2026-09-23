@@ -1,0 +1,15 @@
+[Unit]
+Description=Obelisk agent runtime (key from dstack)
+After=network.target obelisk-dstack-sim.service obelisk-prover.service obelisk-executor.service
+Requires=obelisk-dstack-sim.service
+
+[Service]
+WorkingDirectory=/opt/obelisk/agent
+EnvironmentFile=/opt/obelisk/.env
+Environment=AGENT_PORT=8080
+Environment=DSTACK_SIMULATOR_ENDPOINT=/opt/dstack/sdk/simulator/dstack.sock
+ExecStart=/usr/bin/node --import tsx src/server.ts
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

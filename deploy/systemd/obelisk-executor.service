@@ -1,0 +1,13 @@
+[Unit]
+Description=Obelisk executor (relayer to ObeliskVault)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/obelisk/executor
+EnvironmentFile=/opt/obelisk/.env
+Environment=EXECUTOR_PORT=8082
+ExecStart=/usr/bin/node --import tsx src/server.ts
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

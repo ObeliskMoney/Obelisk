@@ -1,0 +1,13 @@
+[Unit]
+Description=Obelisk prover service (SP1)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/obelisk/executor
+EnvironmentFile=/opt/obelisk/.env
+Environment=PROVER_PORT=8081
+ExecStart=/usr/bin/node --import tsx src/prover-server.ts
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

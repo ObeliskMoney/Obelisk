@@ -1,0 +1,11 @@
+[Unit]
+Description=Obelisk dstack TEE simulator
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/dstack/sdk/simulator
+ExecStart=/opt/dstack/sdk/simulator/dstack-simulator
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
