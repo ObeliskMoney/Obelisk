@@ -1,0 +1,21 @@
+{
+  "name": "@obelisk/demo-video",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Demo out/obelisk-demo.mp4",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.527",
+    "@remotion/google-fonts": "4.0.527",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "4.0.527"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "typescript": "^5.9.0"
+  }
+}
