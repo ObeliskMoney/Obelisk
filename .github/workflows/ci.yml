@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - name: Test (unit, fuzz, invariant, vectors)
+        working-directory: contracts
+        run: forge test -vv
+      - name: Coverage
+        working-directory: contracts
+        run: forge coverage --report summary --no-match-coverage "(test|mocks|script)"
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: zk
+      - name: Policy engine tests
+        working-directory: zk
+        run: cargo test -p obelisk-policy
+      - name: Vectors up to date
+        working-directory: zk
+        run: |
+          cargo run -q -p obelisk-policy --example vectors > /dev/null
+          git diff --exit-code ../packages/shared/test/vectors.json
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm --filter @obelisk/shared test
