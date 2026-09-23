@@ -15,5 +15,5 @@ zk/target/
 .vercel/
 next-env.d.ts
 *.tsbuildinfo
-.claude/skills/
+.claude/
 executor/data/
