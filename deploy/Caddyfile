@@ -1,0 +1,19 @@
+# Public API of the Obelisk agent. Only /api/* is forwarded; the other services (prover, executor)
+# only listen on 127.0.0.1 and are never exposed.
+66-42-60-180.sslip.io {
+	encode gzip
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		respond "Obelisk agent API. See https://obelisk-ledger.vercel.app" 200
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	log {
+		output file /var/log/caddy/obelisk.log
+	}
+}
