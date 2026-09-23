@@ -1,0 +1,15 @@
+# Obelisk Agent compose app for dstack. The hash of this file (compose hash) = the codeMeasurement
+# recorded in AgentRegistry. Changing the image or code changes the measurement, so it must be registered again.
+services:
+  obelisk-agent:
+    image: ghcr.io/obeliskmoney/obelisk-agent@sha256:${AGENT_IMAGE_DIGEST}
+    network_mode: host
+    volumes:
+      - /var/run/dstack.sock:/var/run/dstack.sock
+    environment:
+      - OBELISK_CHAIN=robinhood-testnet
+      - ROBINHOOD_TESTNET_RPC_URL
+      - GROQ_API_KEY
+      - PROVER_URL
+      - EXECUTOR_URL
+    restart: unless-stopped
