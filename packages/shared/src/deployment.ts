@@ -17,6 +17,8 @@ export interface Deployment {
    * program with setPolicy (programVKey), since the prover only runs the current program.
    */
   legacyFactories?: Address[];
+  /** Contract version of vaults from `factory`: 4 = onchain limits (createVault takes Limits). Absent = 3. */
+  vaultVersion?: 3 | 4;
   verifier: Address;
   verifierKind: "mock" | "sp1-groth16";
   usdc: Address;

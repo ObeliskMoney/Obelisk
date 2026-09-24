@@ -43,6 +43,41 @@ export function buildPolicy(
   };
 }
 
+/** Onchain limits of a v4 vault (ObeliskVault `Limits`), derived from its policy. */
+export interface Limits {
+  token: Address;
+  maxPerTx: bigint;
+  maxPerDay: bigint;
+  routers: readonly Address[];
+  payees: readonly Address[];
+}
+
+/** The onchain limits that must accompany `policy` in createVault / setRules (vault v4). */
+export function limitsFor(policy: Policy): Limits {
+  return {
+    token: policy.token,
+    maxPerTx: BigInt(policy.maxPerTx),
+    maxPerDay: BigInt(policy.maxPerDay),
+    routers: policy.allowedTargets,
+    payees: policy.allowedRecipients,
+  };
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((x) => b.some((y) => y.toLowerCase() === x.toLowerCase()));
+
+/** true when a vault's onchain limits are exactly the ones its policy implies. */
+export function limitsMatch(onchain: Limits, policy: Policy): boolean {
+  const want = limitsFor(policy);
+  return (
+    onchain.token.toLowerCase() === want.token.toLowerCase() &&
+    onchain.maxPerTx === want.maxPerTx &&
+    onchain.maxPerDay === want.maxPerDay &&
+    sameSet(onchain.routers, want.routers) &&
+    sameSet(onchain.payees, want.payees)
+  );
+}
+
 /**
  * Make sure `vault` was created by the Obelisk factory and the policy JSON matches the onchain policyHash.
  * Used before storing a vault and before the executor pays gas for it.
@@ -52,7 +87,7 @@ export async function verifyVault(
   dep: Deployment,
   vault: Address,
   policy?: Policy,
-): Promise<{ owner: Address; policyHash: `0x${string}` }> {
+): Promise<{ owner: Address; policyHash: `0x${string}`; version: 3 | 4 }> {
   const [owner, onchainPolicy, onchainVKey] = await Promise.all([
     client.readContract({ address: vault, abi: obeliskVaultAbi, functionName: "owner" }),
     client.readContract({ address: vault, abi: obeliskVaultAbi, functionName: "policyHash" }),
@@ -63,9 +98,12 @@ export async function verifyVault(
       client.readContract({ address: factory, abi: obeliskVaultFactoryAbi, functionName: "vaultsOf", args: [owner] }),
     ),
   );
-  if (!lists.flat().some((v) => v.toLowerCase() === vault.toLowerCase())) {
+  const has = (l: readonly Address[]) => l.some((v) => v.toLowerCase() === vault.toLowerCase());
+  if (!lists.some(has)) {
     throw new Error("this vault was not created by the Obelisk factory");
   }
+  // Vaults from the current factory are v4 (onchain limits); earlier factories made v2/v3 vaults without them.
+  const version = has(lists[0]!) && dep.vaultVersion === 4 ? 4 : 3;
   if (onchainVKey.toLowerCase() !== dep.programVKey.toLowerCase()) {
     throw new Error("this vault still uses the previous rules program; update its rules in the app first");
   }
@@ -86,6 +124,10 @@ export async function verifyVault(
     if (policy.minOutPerIn.length !== policy.allowedTokensOut.length || policy.minOutPerIn.some((x) => BigInt(x) <= 0n)) {
       throw new Error("the rules need a price floor for every swap output");
     }
+    if (version === 4) {
+      const onchain = await client.readContract({ address: vault, abi: obeliskVaultAbi, functionName: "limits" });
+      if (!limitsMatch(onchain, policy)) throw new Error("the vault's onchain limits do not match these rules");
+    }
   }
-  return { owner, policyHash: onchainPolicy };
+  return { owner, policyHash: onchainPolicy, version };
 }

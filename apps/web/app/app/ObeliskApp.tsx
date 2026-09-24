@@ -23,11 +23,14 @@ import {
   erc20Abi,
   wethAbi,
   factoryAbi,
+  factoryAbiV4,
+  limitsFor,
   minOutPerInToPriceCap,
   policyHash,
   priceCapToMinOutPerIn,
   quoterAbi,
   vaultAbi,
+  vaultAbiV4,
   type AgentConfig,
   type Policy,
 } from "@/lib/chain";
@@ -130,6 +133,8 @@ export default function ObeliskApp() {
   const [chainId, setChainId] = useState<number | null>(null);
   const [vaults, setVaults] = useState<Address[]>([]);
   const [selected, setSelected] = useState<Address | null>(null);
+  // Vaults from the current factory when it makes v4 vaults (onchain limits); the rest are earlier versions.
+  const [v4Vaults, setV4Vaults] = useState<Address[]>([]);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -193,6 +198,7 @@ export default function ObeliskApp() {
       ),
     );
     const list = [...lists.slice(1).flat(), ...lists[0]!];
+    setV4Vaults(cfg.vaultVersion === 4 ? lists[0]! : []);
     setVaults([...list].reverse());
     setSelected((s) => (s && list.includes(s) ? s : (list[list.length - 1] ?? null)));
   }, [pub, cfg, account]);
@@ -352,14 +358,24 @@ export default function ObeliskApp() {
                 run("create", async () => {
                   if (!wallet || !pub || !account) return;
                   const policy = buildPolicy(cfg, form);
-                  const h = await wallet.writeContract({
-                    chain: CHAIN,
-                    account,
-                    address: cfg.factory,
-                    abi: factoryAbi,
-                    functionName: "createVault",
-                    args: [policyHash(policy), cfg.agent],
-                  });
+                  const h =
+                    cfg.vaultVersion === 4
+                      ? await wallet.writeContract({
+                          chain: CHAIN,
+                          account,
+                          address: cfg.factory,
+                          abi: factoryAbiV4,
+                          functionName: "createVault",
+                          args: [policyHash(policy), cfg.agent, limitsFor(policy)],
+                        })
+                      : await wallet.writeContract({
+                          chain: CHAIN,
+                          account,
+                          address: cfg.factory,
+                          abi: factoryAbi,
+                          functionName: "createVault",
+                          args: [policyHash(policy), cfg.agent],
+                        });
                   await pub.waitForTransactionReceipt({ hash: h });
                   const list = (await pub.readContract({ address: cfg.factory, abi: factoryAbi, functionName: "vaultsOf", args: [account] })) as Address[];
                   const vault = list[list.length - 1]!;
@@ -374,7 +390,21 @@ export default function ObeliskApp() {
               }
             />
           ) : selected && pub && wallet && account ? (
-            <VaultView key={selected} vault={selected} cfg={cfg} pub={pub} wallet={wallet} account={account} busy={busy} run={run} sign={sign} />
+            <VaultView
+              key={selected}
+              vault={selected}
+              cfg={cfg}
+              pub={pub}
+              wallet={wallet}
+              account={account}
+              busy={busy}
+              run={run}
+              sign={sign}
+              isV4={v4Vaults.includes(selected)}
+              newest={v4Vaults[v4Vaults.length - 1] ?? null}
+              onVaultsChanged={loadVaults}
+              onOpen={setSelected}
+            />
           ) : null}
         </>
       )}
@@ -674,6 +704,10 @@ function VaultView({
   busy,
   run,
   sign,
+  isV4,
+  newest,
+  onVaultsChanged,
+  onOpen,
 }: {
   vault: Address;
   cfg: AgentConfig;
@@ -683,6 +717,10 @@ function VaultView({
   busy: string | null;
   run: (label: string, fn: () => Promise<string | void>) => Promise<void>;
   sign: (vault: string, action: AuthAction, payload: string) => Promise<{ vault: string; ts: number; signature: `0x${string}` }>;
+  isV4: boolean;
+  newest: Address | null;
+  onVaultsChanged: () => Promise<void>;
+  onOpen: (vault: Address) => void;
 }) {
   const [info, setInfo] = useState<VaultRow | null | undefined>(undefined);
   const [bal, setBal] = useState<{ vUsdc: bigint; vWeth: bigint; wUsdc: bigint; wWeth: bigint; wEth: bigint; spent: bigint; allowed: boolean } | null>(null);
@@ -693,6 +731,7 @@ function VaultView({
   const [jobText, setJobText] = useState(`swap 10 ${TOKEN} to ETH`);
   const [jobEvery, setJobEvery] = useState("1440");
   const [onchain, setOnchain] = useState<{ vkey: string; policyHash: string } | null>(null);
+  const [limits, setLimits] = useState<{ maxPerTx: bigint; maxPerDay: bigint } | null>(null);
   const { maxPrice, setMaxPrice, spot } = usePriceLimit(pub, cfg);
 
   const refresh = useCallback(async () => {
@@ -712,6 +751,7 @@ function VaultView({
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "policyHash" }),
     ]);
     setOnchain({ vkey, policyHash: ph });
+    if (isV4) setLimits(await pub.readContract({ address: vault, abi: vaultAbiV4, functionName: "limits" }));
     const [t, j, vs] = await Promise.all([
       api<TaskRow[]>("GET", `/tasks?vault=${vault}`),
       api<JobRow[]>("GET", `/jobs?vault=${vault}`),
@@ -720,7 +760,7 @@ function VaultView({
     setTasks(t);
     setJobs(j);
     setInfo(vs.find((v) => v.address.toLowerCase() === vault.toLowerCase()) ?? null);
-  }, [pub, cfg, vault, account]);
+  }, [pub, cfg, vault, account, isV4]);
 
   useEffect(() => {
     refresh().catch(() => {});
@@ -774,6 +814,96 @@ function VaultView({
       await refresh();
       return "Rules sent to the agent.";
     });
+
+  // v4 vaults check the limits onchain too. Contracts cannot be upgraded, so an earlier vault moves by creating a
+  // new vault with the same rules and moving the funds over.
+  const canMove = cfg.vaultVersion === 4 && !isV4 && !!info && !!policy;
+  const floor = policy?.minOutPerIn?.[0];
+  const createNew = () =>
+    run("move", async () => {
+      if (!policy) return;
+      const next = buildPolicy(cfg, {
+        maxPerTx: BigInt(policy.maxPerTx),
+        maxPerDay: BigInt(policy.maxPerDay),
+        recipients: policy.allowedRecipients,
+        minOutPerIn: floor ? BigInt(floor) : priceCapToMinOutPerIn(parseUnits(maxPrice, 6)),
+      });
+      const h = await wallet.writeContract({
+        ...common,
+        address: cfg.factory,
+        abi: factoryAbiV4,
+        functionName: "createVault",
+        args: [policyHash(next), cfg.agent, limitsFor(next)],
+      });
+      await pub.waitForTransactionReceipt({ hash: h });
+      const list = await pub.readContract({ address: cfg.factory, abi: factoryAbiV4, functionName: "vaultsOf", args: [account] });
+      const nv = list[list.length - 1]!;
+      const meta = { policy: next, labels: info?.labels ?? {}, name: info?.name ?? "" };
+      savePending(nv, meta);
+      await api("POST", "/vaults", { ...(await sign(nv, "vault:register", policyHash(next))), ...meta });
+      savePending(nv, null);
+      await onVaultsChanged();
+      return "New vault created with the same rules. Now move your funds into it.";
+    });
+  const moveFunds = (to: Address) =>
+    run("move", async () => {
+      const amt = bal!.vUsdc;
+      let h = await wallet.writeContract({ ...common, address: vault, abi: vaultAbi, functionName: "withdraw", args: [cfg.usdc, account, amt] });
+      await pub.waitForTransactionReceipt({ hash: h });
+      h = await wallet.writeContract({ ...common, address: cfg.usdc, abi: erc20Abi, functionName: "transfer", args: [to, amt] });
+      await pub.waitForTransactionReceipt({ hash: h });
+      await refresh();
+      return `${fmt(amt, 6, 2)} ${TOKEN} moved to the new vault.`;
+    });
+  const moveCard = canMove ? (
+    <div className="card pad">
+      <h2>Move to a vault with onchain limits</h2>
+      <p className="muted">
+        New vaults check your limits in the vault contract too: it measures how much {TOKEN} leaves on every action,
+        and only lets the agent approve the exchange, pay your payees or swap back into the vault. This vault was made
+        before that. Create a new vault with the same rules, then move your funds. Agent keys belong to one vault, so
+        create them again on the new one.
+      </p>
+      {newest ? (
+        <div className="stack">
+          <p className="muted small">
+            New vault <span className="mono">{short(newest)}</span>
+          </p>
+          {bal && bal.vUsdc > 0n ? (
+            <button className="btn primary" disabled={!!busy} onClick={() => moveFunds(newest)}>
+              {busy === "move" ? "Moving" : `Move ${fmt(bal.vUsdc, 6, 2)} ${TOKEN} to the new vault (2 wallet prompts)`}
+            </button>
+          ) : (
+            <button className="btn primary" disabled={!!busy} onClick={() => onOpen(newest)}>
+              Open the new vault
+            </button>
+          )}
+          {bal && bal.vWeth > 0n && <p className="muted small">Withdraw the WETH in Funds below; it goes to your wallet.</p>}
+        </div>
+      ) : (
+        <>
+          {!floor && (
+            <>
+              <div className="form">
+                <label>
+                  Highest ETH price the agent may pay ({TOKEN} per ETH)
+                  <input inputMode="decimal" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+                </label>
+              </div>
+              <PriceHint spot={spot} />
+            </>
+          )}
+          <button className="btn primary" disabled={!!busy || (!floor && !(Number(maxPrice) > 0))} onClick={createNew}>
+            {busy === "move" ? "Creating" : "Create the new vault (2 wallet prompts)"}
+          </button>
+        </>
+      )}
+    </div>
+  ) : null;
+
+  if (info && policy && outdated && canMove) {
+    return moveCard;
+  }
 
   if (info && policy && outdated) {
     return (
@@ -843,6 +973,7 @@ function VaultView({
 
   return (
     <>
+      {moveCard}
       <div className="stats">
         <div className="stat">
           <b>{fmt(bal?.vUsdc, 6, 2)}</b>
@@ -1057,6 +1188,12 @@ function VaultView({
                 {policy.minOutPerIn?.[0] && (
                   <li>
                     Never pays more than {fmt(minOutPerInToPriceCap(BigInt(policy.minOutPerIn[0])), 6, 0)} {TOKEN} per ETH
+                  </li>
+                )}
+                {limits && (
+                  <li>
+                    Also checked by the vault contract: at most {fmt(limits.maxPerTx, 6, 2)} {TOKEN} can leave per action and{" "}
+                    {fmt(limits.maxPerDay, 6, 2)} {TOKEN} per day, only to your payees or through the exchange
                   </li>
                 )}
               </ul>

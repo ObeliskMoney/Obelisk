@@ -26,6 +26,15 @@ owner moves them to the v3 program with **Update rules** in the app (`setPolicy`
 Rehearsed first on a mainnet fork: the factory deploy, the migration of an existing vault, and a full agent run with
 two real Groth16 proofs (approve, then swap 50 USDG for 0.0187 ETH).
 
+## Vault v4: onchain limits (prepared 24 September 2026)
+
+The vault contract used to check the proof but hold no copy of the spending rules (self-audit F-17). v4 vaults also
+check the call and measure how much of the limited token leaves, per call and per day, against caps stored in the
+vault (docs/spec.md §5). The SP1 program and its key do not change, so only a new factory is deployed
+(`scripts/upgrade-mainnet-vault-v4.sh`, which runs `DeployFactory.s.sol` with `SAME_PROGRAM=true`). v3 vaults keep
+working; their owners move with **Move to a vault with onchain limits** in the app (a new vault with the same rules,
+then the funds). Contracts cannot be upgraded in place, so this is the only way to get the new checks.
+
 ## External addresses, checked onchain
 
 | What | Address | Notes |

@@ -7,6 +7,21 @@ export const factoryAbi = parseAbi([
   "function vaultsOf(address owner) view returns (address[])",
 ]);
 
+const LIMITS = "(address token, uint256 maxPerTx, uint256 maxPerDay, address[] routers, address[] payees)";
+
+/** Factory for v4 vaults: createVault also takes the onchain limits. */
+export const factoryAbiV4 = parseAbi([
+  `function createVault(bytes32 policyHash, address agent, ${LIMITS} limits) returns (address)`,
+  "function vaultsOf(address owner) view returns (address[])",
+]);
+
+/** v4 vaults: onchain limits, changed together with the policy through setRules. */
+export const vaultAbiV4 = parseAbi([
+  `function limits() view returns (${LIMITS})`,
+  `function setRules(bytes32 policyHash, bytes32 programVKey, ${LIMITS} limits)`,
+  "function outflowOnDay(uint64 day) view returns (uint256)",
+]);
+
 export const vaultAbi = parseAbi([
   "function owner() view returns (address)",
   "function policyHash() view returns (bytes32)",
@@ -26,6 +41,17 @@ export const erc20Abi = parseAbi([
 
 /** Wrapped ETH: swaps land in the vault as WETH, and the owner unwraps it to native ETH from their own wallet. */
 export const wethAbi = parseAbi(["function withdraw(uint256 amount)"]);
+
+/** The onchain limits that go with a policy (v4 vaults): same token, caps, exchange and payees. */
+export function limitsFor(p: Policy) {
+  return {
+    token: p.token,
+    maxPerTx: BigInt(p.maxPerTx),
+    maxPerDay: BigInt(p.maxPerDay),
+    routers: p.allowedTargets,
+    payees: p.allowedRecipients,
+  };
+}
 
 export const quoterAbi = parseAbi([
   "function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
@@ -123,6 +149,8 @@ export interface AgentConfig {
   factory: Address;
   /** Earlier factories whose vaults are still listed (they must move to the current program first). */
   legacyFactories?: Address[];
+  /** Contract version of vaults from `factory`: 4 = onchain limits. */
+  vaultVersion?: 3 | 4;
   programVKey?: Hex;
   registry: Address;
   usdc: Address;

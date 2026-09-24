@@ -119,8 +119,21 @@ publicValues = abi.encode(PolicyOutput{
 4. `verifier.verifyProof(programVKey, publicValues, proof)` does not revert
 5. `out.policyHash == policyHash`, `out.intentHash == intentHash(intent)`
 6. `out.day == block.timestamp / 86400`, `out.spentBefore == spentOnDay[day]`
-7. set `usedNonce`, `spentOnDay[day] = out.spentAfter`, then call the target
-8. if the call fails, the whole transaction reverts
+7. set `usedNonce`, `spentOnDay[day] = out.spentAfter`
+8. onchain limits (vault v4): the call must be one of
+   - `limitToken.approve(router, amount)` with `router` in the vault's routers and `amount <= maxPerDay`
+   - `limitToken.transfer(payee, amount)` with `payee` in the vault's payees
+   - `router.exactInputSingle(params)` with `params.tokenIn == limitToken` and `params.recipient == vault`
+
+   with exactly the ABI length of that call (68 or 228 bytes)
+9. call the target; the vault measures its `limitToken` balance before and after, and the drop must be at most
+   `maxPerTx` and keep `outflowOnDay[day]` at most `maxPerDay`
+10. if the call fails, the whole transaction reverts
+
+Steps 8 and 9 repeat the spending rules without trusting the proof: if the SP1 program ever accepted an intent it
+should not, the vault still refuses calls to anything but the token and its routers, payments to anyone but the
+payees, swaps whose output leaves the vault, and any drop of `limitToken` above the onchain caps. The onchain limits
+are set together with the policy (`createVault`, `setRules`) and must match it; the stricter of the two applies.
 
 `spentBefore` must equal the value recorded onchain, so the daily limit cannot be
 bypassed with a proof that uses a different number. `day` must be today, so an
@@ -130,7 +143,9 @@ bypassed with a proof that uses a different number. `day` must be today, so an
 
 - The TEE attestation is verified offchain by the registry owner before `registerAgent`.
 - Only one token is limited per policy; other assets in the vault are not covered by the limits,
-  and the allowed selectors do not let the agent move them.
+  and the allowed selectors (and, from v4, the onchain call check) do not let the agent move them.
+- The onchain limits do not check the swap pool, output token or price; those stay in the proof. A swap that the
+  program wrongly accepts can lose at most what the onchain caps let leave the vault.
 - ETH `value` is always 0.
 - Transactions refused by the policy program never touch the chain; the activity log
   records them from the executor's report. Transactions that are *forced* onchain with a

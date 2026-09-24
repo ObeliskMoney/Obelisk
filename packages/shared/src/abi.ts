@@ -30,6 +30,38 @@ export const obeliskVaultAbi = [
         "internalType": "bytes32"
       },
       {
+        "name": "limits_",
+        "type": "tuple",
+        "internalType": "struct Limits",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxPerTx",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPerDay",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "routers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "payees",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ]
+      },
+      {
         "name": "agent_",
         "type": "address",
         "internalType": "address"
@@ -50,6 +82,32 @@ export const obeliskVaultAbi = [
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_LIST",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "stateMutability": "view"
@@ -245,6 +303,142 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "function",
+    "name": "isPayee",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRouter",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "limitPerDay",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "limitPerTx",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "limitToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "limits",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Limits",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxPerTx",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPerDay",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "routers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "payees",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "outflowOnDay",
+    "inputs": [
+      {
+        "name": "day",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "owner",
     "inputs": [],
     "outputs": [
@@ -335,7 +529,7 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "function",
-    "name": "setPolicy",
+    "name": "setRules",
     "inputs": [
       {
         "name": "policyHash_",
@@ -346,6 +540,38 @@ export const obeliskVaultAbi = [
         "name": "programVKey_",
         "type": "bytes32",
         "internalType": "bytes32"
+      },
+      {
+        "name": "limits_",
+        "type": "tuple",
+        "internalType": "struct Limits",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxPerTx",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPerDay",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "routers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "payees",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -548,6 +774,43 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "event",
+    "name": "LimitsUpdated",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "maxPerTx",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPerDay",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "routers",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      },
+      {
+        "name": "payees",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "OwnershipTransferStarted",
     "inputs": [
       {
@@ -646,6 +909,21 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "error",
+    "name": "ApproveAboveDailyLimit",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadLimits",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CallNotAllowed",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ECDSAInvalidSignature",
     "inputs": []
   },
@@ -714,6 +992,28 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "error",
+    "name": "OutflowAbovePerDay",
+    "inputs": [
+      {
+        "name": "outflowToday",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutflowAbovePerTx",
+    "inputs": [
+      {
+        "name": "outflow",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "OwnableInvalidOwner",
     "inputs": [
       {
@@ -729,6 +1029,17 @@ export const obeliskVaultAbi = [
     "inputs": [
       {
         "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PayeeNotAllowed",
+    "inputs": [
+      {
+        "name": "to",
         "type": "address",
         "internalType": "address"
       }
@@ -767,6 +1078,17 @@ export const obeliskVaultAbi = [
   },
   {
     "type": "error",
+    "name": "SpenderNotAllowed",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "SpentDecreased",
     "inputs": []
   },
@@ -785,6 +1107,11 @@ export const obeliskVaultAbi = [
         "internalType": "string"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "SwapNotAllowed",
+    "inputs": []
   },
   {
     "type": "error",
@@ -852,6 +1179,38 @@ export const obeliskVaultFactoryAbi = [
         "name": "agent",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "limits",
+        "type": "tuple",
+        "internalType": "struct Limits",
+        "components": [
+          {
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "maxPerTx",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPerDay",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "routers",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "payees",
+            "type": "address[]",
+            "internalType": "address[]"
+          }
+        ]
       }
     ],
     "outputs": [

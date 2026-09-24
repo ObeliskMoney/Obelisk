@@ -77,6 +77,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       chainId: deployment.chainId,
       factory: deployment.factory,
       legacyFactories: deployment.legacyFactories ?? [],
+      vaultVersion: deployment.vaultVersion ?? 3,
       registry: deployment.registry,
       usdc: deployment.usdc,
       weth: deployment.weth,

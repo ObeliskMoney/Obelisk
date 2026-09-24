@@ -21,6 +21,7 @@ import {
   mockERC20Abi,
   obeliskVaultFactoryAbi,
   policyHash,
+  limitsFor,
   resolveChain,
   type AuthAction,
 } from "@obelisk/shared";
@@ -87,7 +88,7 @@ let hash = await wallet.writeContract({
   address: dep.factory,
   abi: obeliskVaultFactoryAbi,
   functionName: "createVault",
-  args: [policyHash(policy), cfg.agent],
+  args: [policyHash(policy), cfg.agent, limitsFor(policy)],
 });
 await pub.waitForTransactionReceipt({ hash });
 const vaults = await pub.readContract({ address: dep.factory, abi: obeliskVaultFactoryAbi, functionName: "vaultsOf", args: [user.address] });

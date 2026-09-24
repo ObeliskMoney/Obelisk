@@ -1,6 +1,7 @@
 {
   "chainId": 4663,
   "factory": "0x4530A51f8efB1A3Fc3d57e14db1965A1038Bb15c",
+  "vaultVersion": 3,
   "mockAssets": false,
   "policy": {
     "allowedRecipients": [],

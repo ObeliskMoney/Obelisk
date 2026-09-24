@@ -45,6 +45,30 @@ export default function Security() {
         </li>
       </ol>
 
+      {deployment.vaultVersion === 4 && (
+        <>
+          <h2>Checked twice</h2>
+          <p>
+            Vaults made since vault v4 do not rely on the proof alone. The vault contract keeps its own copy of your
+            limits and checks every call itself:
+          </p>
+          <ul className="plain-list">
+            <li>
+              <b>Which calls.</b> Only an approval for the exchange (up to your daily limit), a payment to one of your
+              payees, or a swap of {TOKEN} whose output comes back to the vault.
+            </li>
+            <li>
+              <b>How much leaves.</b> The vault measures its {TOKEN} balance before and after each action, and refuses
+              anything above your per-transaction or daily limit, whatever the transaction claims.
+            </li>
+          </ul>
+          <p>
+            The proof still checks everything else, such as the pool and your price limit. Vaults made before v4 rely
+            on the proof alone; the app offers to move them to a new vault.
+          </p>
+        </>
+      )}
+
       <h2>What this protects against</h2>
       <ul className="plain-list">
         <li>Prompt injection: an agent tricked into sending money elsewhere cannot produce a valid proof.</li>
