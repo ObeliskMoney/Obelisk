@@ -24,7 +24,7 @@ import {
   type ProverResult,
 } from "@obelisk/shared";
 import type { AgentAction } from "@obelisk/shared";
-import type { Action, Plan, Planner } from "./llm.js";
+import { detectLanguage, type Action, type Plan, type Planner, type Replier, type ReplyFacts } from "./llm.js";
 
 /** docs/agents.md: the public action names map onto the planner's tools. */
 function toAction(a: AgentAction): Action {
@@ -53,6 +53,8 @@ export interface AgentDeps {
   client: PublicClient;
   identity: AgentIdentity;
   planner: Planner;
+  /** Writes the final message from the results (optional; without it the planner's text and a fixed summary are used). */
+  replier?: Replier;
   proverUrl: string;
   executorUrl: string;
 }
@@ -294,8 +296,8 @@ export class ObeliskAgent {
 
   private taskId?: string;
 
-  /** Vault summary for the `vault_status` tool (no onchain action). */
-  async status(v: VaultCtx): Promise<string> {
+  /** Balances and today's limit usage, as display strings (read after the actions ran). */
+  async vaultFacts(v: VaultCtx): Promise<ReplyFacts["vault"]> {
     const { client, deployment: dep } = this.d;
     const block = await client.getBlock();
     const day = block.timestamp / 86400n;
@@ -306,8 +308,43 @@ export class ObeliskAgent {
     ]);
     const f = (x: bigint, d: number) => (Number(x) / 10 ** d).toLocaleString("en-US", { maximumFractionDigits: 6 });
     const left = BigInt(v.policy.maxPerDay) - spent;
+    return {
+      balance: f(usdcBal, 6),
+      eth: f(wethBal, 18),
+      spentToday: f(spent, 6),
+      dailyLimit: f(BigInt(v.policy.maxPerDay), 6),
+      leftToday: f(left > 0n ? left : 0n, 6),
+      perTxLimit: f(BigInt(v.policy.maxPerTx), 6),
+    };
+  }
+
+  /** Vault summary for the `vault_status` tool (no onchain action). Fixed English, also used by external agents. */
+  async status(v: VaultCtx): Promise<string> {
+    const x = await this.vaultFacts(v);
     const s = this.symbol;
-    return `Vault balance: ${f(usdcBal, 6)} ${s} and ${f(wethBal, 18)} ETH. Spent today: ${f(spent, 6)} of ${f(BigInt(v.policy.maxPerDay), 6)} ${s} (${f(left > 0n ? left : 0n, 6)} left).`;
+    return `Vault balance: ${x.balance} ${s} and ${x.eth} ETH. Spent today: ${x.spentToday} of ${x.dailyLimit} ${s} (${x.leftToday} left).`;
+  }
+
+  /**
+   * The message the owner reads, written after the actions ran so it can say what actually happened. Only for
+   * requests in natural language; structured calls from external agents keep the fixed summary.
+   */
+  private async finalReply(v: VaultCtx, task: string, plan: Plan, steps: StepResult[], fallback: string): Promise<string> {
+    if (!this.d.replier || !plan.actions.length) return fallback;
+    try {
+      const facts: ReplyFacts = {
+        request: task,
+        language: detectLanguage(task),
+        plannerNote: plan.reply,
+        token: this.symbol,
+        vault: await this.vaultFacts(v),
+        steps: steps.map((s) => ({ what: s.label, result: s.status, code: s.code, reason: s.reason })),
+      };
+      return await this.d.replier(facts);
+    } catch (e) {
+      console.warn(`[agent] final reply fell back: ${(e as Error).message}`);
+      return fallback;
+    }
   }
 
   async runTask(
@@ -381,6 +418,7 @@ export class ObeliskAgent {
         }
       }
     }
+    if (!opts.actions) reply = await this.finalReply(v, task, plan, steps, reply);
     return { task, vault: v.address, model: plan.model, reply, actions: plan.actions, steps };
   }
 }

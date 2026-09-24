@@ -37,9 +37,9 @@ REGISTRY=$(node -p "require('$ROOT/contracts/deployments/local.json').registry")
 
 rm -f "$ROOT/executor/data/local.jsonl"
 export OBELISK_CHAIN=local
-(cd "$ROOT/executor" && SP1_PROVER=${SP1_PROVER:-mock} node --import tsx src/prover-server.ts > "$RUN/prover.log" 2>&1 & echo $! > "$RUN/prover.pid")
-(cd "$ROOT/executor" && LEDGER_STORE=file PRICE_KEEPER=off DEPLOYER_PRIVATE_KEY=$DEPLOYER_PK node --import tsx src/server.ts > "$RUN/executor.log" 2>&1 & echo $! > "$RUN/executor.pid")
-(cd "$ROOT/agent" && DB=memory AGENT_DEV_PRIVATE_KEY=$AGENT_PK node --import tsx src/server.ts > "$RUN/agent.log" 2>&1 & echo $! > "$RUN/agent.pid")
+(cd "$ROOT/executor" && SP1_PROVER=${SP1_PROVER:-mock} exec node --import tsx src/prover-server.ts > "$RUN/prover.log" 2>&1 & echo $! > "$RUN/prover.pid")
+(cd "$ROOT/executor" && LEDGER_STORE=file PRICE_KEEPER=off DEPLOYER_PRIVATE_KEY=$DEPLOYER_PK exec node --import tsx src/server.ts > "$RUN/executor.log" 2>&1 & echo $! > "$RUN/executor.pid")
+(cd "$ROOT/agent" && DB=memory AGENT_DEV_PRIVATE_KEY=$AGENT_PK exec node --import tsx src/server.ts > "$RUN/agent.log" 2>&1 & echo $! > "$RUN/agent.pid")
 for _ in $(seq 60); do curl -sf localhost:8082/health >/dev/null && curl -sf localhost:8081/health >/dev/null && curl -sf localhost:8080/api/config >/dev/null && break; sleep 0.5; done
 
 echo "✓ anvil :8545  prover :8081 (${SP1_PROVER:-mock})  executor :8082  agent API :8080"

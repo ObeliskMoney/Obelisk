@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { loadDeployment, loadEnv, makeDb, resolveChain } from "@obelisk/shared";
 import { ObeliskAgent } from "./agent.js";
 import { loadIdentity } from "./identity.js";
-import { llmPlanner, type Planner } from "./llm.js";
+import { llmPlanner, llmReplier, type Planner } from "./llm.js";
 import { ObeliskService } from "./service.js";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -21,6 +21,7 @@ export async function boot(planner: Planner = llmPlanner) {
     client,
     identity,
     planner,
+    replier: process.env.AGENT_REPLIES === "fixed" ? undefined : llmReplier,
     proverUrl: process.env.PROVER_URL ?? "http://127.0.0.1:8081",
     executorUrl: process.env.EXECUTOR_URL ?? "http://127.0.0.1:8082",
   });
