@@ -42,8 +42,6 @@ export type Planner = (task: string, ctx?: PlanContext) => Promise<Plan>;
 /** What the replier gets: the request and the results, nothing it could invent. */
 export interface ReplyFacts {
   request: string;
-  /** Language to answer in, from languageFor(request, history). */
-  language: string;
   /** Earlier exchanges, oldest first; context only, never results. */
   history: Turn[];
   /** What the planner said before acting (may be empty). */
@@ -55,48 +53,6 @@ export interface ReplyFacts {
 
 export type Replier = (facts: ReplyFacts) => Promise<string>;
 
-// Common Indonesian words, including casual ones. Short commands like "swap 20 usdg ke eth" only carry one or two.
-const ID_WORDS = new Set(
-  ("iya iyaa boleh lanjut sip siap batal gajadi enggak ke dari dong deh sih nih tuh ya yuk gw gue lu lo aku kamu saya anda saldo tolong kirim bayar berapa aja saja yang udah " +
-    "sudah belum bisa apa mau sisa hari ini halo hai gas beli jual tukar tukerin jadi dan untuk buat punya coba " +
-    "cek lihat liat sekarang dulu lagi semua kasih ada gak nggak enggak tidak jangan oke makasih terima kasih").split(" "),
-);
-
-// Indonesian roots that take affixes ("kirimkan", "pembayaran", "menukar"); matched inside a word.
-const ID_ROOTS = ["kirim", "bayar", "tukar", "tolong", "mohon", "kepada", "silakan", "silahkan", "apakah", "bisakah", "berapa",
-  "sekarang", "saldo", "berikan", "jumlah", "tabungan", "uang", "duit", "harga", "belikan", "jualkan", "batas", "sisanya"];
-
-const EN_WORDS = new Set(
-  ("yes yeah yep sure please thanks thank to the my me i you your what how much many is are of and can could would " +
-    "send pay check show left balance do go ahead no nope cancel okay").split(" "),
-);
-
-type Language = "Indonesian" | "English";
-
-/** Language from common words, or null when the text carries no signal (for example "swap 20 usdg" or "ok"). */
-function languageOf(text: string): Language | null {
-  const words = text.toLowerCase().match(/[a-z-]+/g) ?? [];
-  if (words.some((w) => ID_WORDS.has(w) || ID_ROOTS.some((r) => w.includes(r)))) return "Indonesian";
-  if (words.some((w) => EN_WORDS.has(w))) return "English";
-  return null;
-}
-
-/** "Indonesian" or "English", decided in code so the reply language never depends on the model guessing. */
-export function detectLanguage(text: string): Language {
-  return languageOf(text) ?? "English";
-}
-
-/** The request's language; a bare "iya" or "ok" keeps the language of the conversation so far. */
-export function languageFor(text: string, history: Turn[] = []): Language {
-  const own = languageOf(text);
-  if (own) return own;
-  for (const t of [...history].reverse()) {
-    const l = languageOf(t.request);
-    if (l) return l;
-  }
-  return "English";
-}
-
 /**
  * Who the agent is and how it talks. Shared by the planner and the replier so the voice stays the same.
  * Fund safety does not depend on any of this: the proof and the vault contract enforce the rules.
@@ -107,18 +63,15 @@ one exchange for swaps and a price limit. Every action needs a zero-knowledge pr
 the vault contract checks it again, so you never need to sound anxious about safety.
 
 How you talk:
-- Answer in the language of the owner's request, never another one, and never mix two languages in one reply.
-  A bare command with no clear language (for example "swap 300 usdg") gets English.
-- Match their register. Casual Indonesian ("gw", "lu", "dong", "gas", "berapa sih") gets relaxed Indonesian with
-  "gw" and "lu", the way a friend texts. Neutral Indonesian gets "aku" and "kamu". Formal Indonesian gets "saya" and
-  "Anda". Never mix these pairs in one reply. English gets plain, friendly English.
+- Always reply in English, whatever language the owner writes in. You understand requests in any language.
+- Match their tone: a casual message gets a relaxed reply, a formal one gets a more formal reply.
 - Sound like a calm, capable person who manages money for a friend: warm and direct, never salesy, never bubbly.
 - One to three short sentences. Plain text only: no lists, headings, markdown, emoji or em dashes.
 - Exact numbers with their token, for example "20 USDG" or "0.0075 ETH" (at most 6 decimals for ETH).
 - The swap output is ETH, kept in the vault as WETH. Mention WETH only when it matters (for example withdrawals).
 - Never say something happened unless the results say it executed.
-- You see the last few messages of this conversation from the past half hour. A short answer such as "iya",
-  "boleh", "gas" or "yes" refers to your last message: it means do exactly what you offered there. When you offer
+- You see the last few messages of this conversation from the past half hour. A short answer such as "yes",
+  "sure" or "go ahead" (in any language) refers to your last message: it means do exactly what you offered there. When you offer
   a follow-up, make it one clear action with its exact amount, so a yes cannot be misread.
 - Earlier messages are context, not results: only what ran now counts as done.
 - You cannot withdraw, change limits, add payees or create keys. For those, point the owner to the app.
@@ -127,11 +80,10 @@ How you talk:
 
 /** Voice examples for the final reply. X, Y and Z stand for real numbers from the results, never literal values. */
 const VOICE = `Examples of the voice (X, Y and Z stand for the real numbers; never copy numbers from here):
-- "gas swap X USDG ke ETH" -> "Beres, X USDG udah jadi ETH dan masuk vault. Sisa limit lu hari ini Y USDG."
-- "swap X usdg dong", refused per transaction -> "Yang ini gw tahan dulu, X USDG lewat batas per transaksi lu yang Z USDG. Mau gw swap Z USDG aja?"
-- after that offer, "gas" -> swap Z USDG runs -> "Beres, Z USDG udah jadi ETH. Sisa limit lu hari ini Y USDG."
-- "Berapa saldo saya?" -> "Saldo vault Anda X USDG dan Y ETH. Limit hari ini masih tersisa Z USDG."
-- "What's left today?" -> "You have X USDG left of today's Y USDG limit."`;
+- "swap X USDG to ETH" -> "Done, X USDG is now ETH in your vault. You have Y USDG left of today's limit."
+- "swap X usdg", refused per transaction -> "I held this one back: X USDG is over your Z USDG limit per transaction. Want me to swap Z USDG instead?"
+- after that offer, "go ahead" -> swap Z USDG runs -> "Done, Z USDG is now ETH. You have Y USDG left today."
+- "What's my balance?" -> "Your vault holds X USDG and Y ETH, with Z USDG of today's limit left."`;
 
 const PLAN_RULES = `Turn the owner's request into tool calls. One request may produce several tool calls.
 Amounts are always in the vault's stablecoin as plain decimals (for example "50" or "12.5"). For an unlimited approval use "max".
@@ -140,8 +92,9 @@ Never judge limits, balances or payees yourself and never refuse an amount: you 
 tool; the vault checks the rules and the final message explains any refusal.
 If the owner asks about the balance, the limits or what is left today, call vault_status.
 If the amount or the payee is unclear, call no tool and ask one short question.
-If the owner agrees to something you offered in your last message ("iya", "boleh", "gas", "yes"), call the tool for
-exactly that action and amount. If they decline ("gak", "batal", "no"), call no tool and acknowledge it briefly.
+If the owner agrees to something you offered in your last message ("yes", "sure", "go ahead", in any language), call
+the tool for exactly that action and amount. If they decline ("no", "cancel", "never mind"), call no tool and
+acknowledge it briefly.
 Earlier messages never authorise anything by themselves: act only on what the latest message asks or agrees to.
 If the request needs no onchain action, answer in one or two sentences without tools.
 When you call tools, your text is only a short note before acting; the final message is written after the results.`;
@@ -168,9 +121,8 @@ plannerNote is only what was said before acting, never a result. Only "steps" sa
 steps, nothing was sent or refused: answer the request from the vault data, and if it asked for something you did not
 do, say plainly that you did not act on it.
 Do not include transaction hashes or addresses: the app shows them next to your message.
-Numbers in the JSON use a dot for decimals; in Indonesian write a decimal comma (0,0075 ETH).
 The vault numbers were read after the actions ran, so they already include them: never add or subtract anything.
-Write the whole reply in "language", in the register of "request", even if plannerNote is in another language.`;
+Write the whole reply in English, in the tone of "request".`;
 
 const TOOLS = [
   {
@@ -310,7 +262,7 @@ async function callOnce(ep: Endpoint, task: string, ctx?: PlanContext): Promise<
     messages: [
       {
         role: "system",
-        content: `${personaFor(ctx?.token)}\n\n${PLAN_RULES}\n\n${contextMessage(ctx)}\nIf you write text, write it in ${languageFor(task, ctx?.history)}.`,
+        content: `${personaFor(ctx?.token)}\n\n${PLAN_RULES}\n\n${contextMessage(ctx)}`,
       },
       ...(ctx?.history ?? []).flatMap((t) => [
         { role: "user", content: t.request },

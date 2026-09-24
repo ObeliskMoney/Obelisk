@@ -1,6 +1,6 @@
 /**
  * End-to-end check of conversation memory (after scripts/local-up.sh): the agent offers a follow-up, the owner
- * answers with a bare "gas" or "yes", and the agent carries out exactly what it offered, still inside the rules.
+ * answers with a bare "go ahead" or "yes", and the agent carries out exactly what it offered, still inside the rules.
  * Uses a real language model (GROQ_API_KEY), so the replies vary; the checks look at the executed steps.
  *
  * Usage:  USER_PK=0x... OBELISK_CHAIN=local npx tsx src/e2e-conversation.ts
@@ -109,25 +109,25 @@ await api("POST", "/vaults", {
 console.log(`vault ${vault}: 300 USDC, 50 per transaction, 120 per day, payee Alex`);
 
 // 1. Over the per-transaction limit: refused, and the agent offers the largest amount that fits.
-let r = await say(vault, "swap 80 usdc ke eth dong");
+let r = await say(vault, "swap 80 usdc to eth");
 check("80 is refused and nothing runs", r.executed.length === 0);
 
-// 2. A bare "gas" means: do what you just offered (swap 50).
-r = await say(vault, "gas");
-check('"gas" runs the offered swap of 50', r.executed.some((l) => /swap 50 /.test(l)));
+// 2. A bare "go ahead" means: do what you just offered (swap 50).
+r = await say(vault, "go ahead");
+check('"go ahead" runs the offered swap of 50', r.executed.some((l) => /swap 50 /.test(l)));
 
 // 3. Declining an offer does nothing.
 await say(vault, "swap 60 usdc");
-r = await say(vault, "gak jadi deh");
-check('"gak jadi" runs nothing', r.executed.length === 0 && r.refused.length === 0);
+r = await say(vault, "never mind");
+check('"never mind" runs nothing', r.executed.length === 0 && r.refused.length === 0);
 
-// 4. A yes in English: 70 is left today, so the agent may offer 50 again; the vault still decides.
+// 4. A plain yes: 70 is left today, so the agent may offer 50 again; the vault still decides.
 await say(vault, "please swap 90 usdc to eth");
 r = await say(vault, "yes");
 check('"yes" runs one swap within the rules', r.executed.filter((l) => /swap/.test(l)).length === 1);
 
 // 5. The payee still has to be approved: memory cannot widen the rules.
-r = await say(vault, "kirim 5 usdc ke Alex");
+r = await say(vault, "send 5 usdc to Alex");
 check("paying Alex runs", r.executed.some((l) => /send 5 /.test(l)));
 
 console.log(failed ? `\n${failed} check(s) failed` : "\nall conversation checks passed");

@@ -24,7 +24,7 @@ import {
   type ProverResult,
 } from "@obelisk/shared";
 import type { AgentAction } from "@obelisk/shared";
-import { languageFor, type Action, type Plan, type Planner, type Replier, type ReplyFacts, type Turn } from "./llm.js";
+import type { Action, Plan, Planner, Replier, ReplyFacts, Turn } from "./llm.js";
 
 /** docs/agents.md: the public action names map onto the planner's tools. */
 function toAction(a: AgentAction): Action {
@@ -353,7 +353,6 @@ export class ObeliskAgent {
     try {
       const facts: ReplyFacts = {
         request: task,
-        language: languageFor(task, history),
         history,
         plannerNote: plan.reply,
         token: this.symbol,
