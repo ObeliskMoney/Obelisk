@@ -5,6 +5,7 @@ import { EASE_OUT_EXPO } from "./motion";
 import { HeroShader } from "./HeroShader";
 import { VaultPreview } from "./VaultPreview";
 import { ActionLink } from "./ui";
+import { HeroCA } from "./HeroCA";
 import { EXPLORER } from "@/lib/network";
 
 /** `proofTx` = the latest verified transaction from the ledger; the chip is hidden if there is none. */
@@ -53,6 +54,9 @@ export function Hero({ proofTx }: { proofTx?: string | null }) {
             <span className="fact-tag">See a real tx</span>
           </a>
           )}
+        </motion.div>
+        <motion.div {...fade(0.45)}>
+          <HeroCA />
         </motion.div>
         </div>
         <motion.div className="ag-hero-product" {...fade(0.5)}>
