@@ -6,7 +6,10 @@ import type { Policy } from "./types.js";
 /** Output of `forge script Deploy` (contracts/deployments/<chain>.json). */
 export interface Deployment {
   chainId: number;
+  /** The demo vault this deployment was first tested with (see notes); not necessarily on the current program. */
   vault: Address;
+  /** programVKey of `vault`, when it differs from the current programVKey. */
+  vaultProgramVKey?: `0x${string}`;
   registry: Address;
   factory: Address;
   /**
@@ -31,6 +34,7 @@ export interface Deployment {
   policy: Policy;
   policyHash: `0x${string}`;
   startBlock: number;
+  notes?: string;
 }
 
 export function loadDeployment(root: string, chain: string): Deployment {

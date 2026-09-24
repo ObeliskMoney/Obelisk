@@ -38,7 +38,7 @@ export function SiteFooter() {
               </span>
               <span>Obelisk</span>
             </span>
-            <p className="muted small">A vault for AI agents with spending limits enforced by the contract.</p>
+            <p className="muted small">A vault for AI agents with spending limits proven in zero knowledge and checked onchain.</p>
             <p className="foot-status small">
               <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Beta on Robinhood Chain" : "Testnet live on Robinhood Chain"}
             </p>

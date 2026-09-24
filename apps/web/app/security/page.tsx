@@ -24,8 +24,8 @@ export default function Security() {
     <main className="wrap page prose">
       <h1>How Obelisk is secured</h1>
       <p className="lede">
-        The short version: your limits live in a contract, and the contract only moves money when it receives a
-        zero-knowledge proof that the transaction follows them. The agent never gets a way around that check.
+        The short version: your rules are checked by an open-source SP1 program, and your vault contract only lets the
+        agent move money when it receives a zero-knowledge proof from that program that the transaction follows them.
       </p>
 
       <h2>Three checks on every transaction</h2>
@@ -91,12 +91,8 @@ export default function Security() {
           </li>
         )}
         <li>
-          <b>Proofs are slow.</b> Each step takes about 15 minutes on our prover, and there is one queue for everyone.
-        </li>
-        <li>
-          <b>Price protection is set by the agent.</b> Swaps must carry a minimum output, which the agent sets from a
-          live Uniswap quote with 2% tolerance. The proof requires a minimum but does not check it against a price
-          oracle, so a bad price can cost at most what your daily limit allows.
+          <b>Proofs take time.</b> About a minute per step on our GPU prover, and up to about 15 minutes when it falls
+          back to the CPU. There is one queue for everyone.
         </li>
         <li>
           <b>One operator key</b> registers agents. It cannot move vault funds. Moving it to a multisig is planned.

@@ -56,10 +56,10 @@ export function Rules() {
   return (
     <section id="rules" className="ag-sec" aria-labelledby="rules-title">
       <div className="ag-wrap">
-        <SectionLabel n={3}>What the vault enforces</SectionLabel>
+        <SectionLabel n={3}>What every proof must show</SectionLabel>
         <h2 id="rules-title" className="ag-h2">
           <WordsPullUp segments={[{ text: "Rules the agent can't talk its way around." }]} />
-          <WordsPullUp segments={[{ text: "Enforced by the contract, not the agent." }]} className="muted-line" startDelay={0.25} />
+          <WordsPullUp segments={[{ text: "Proven in zero knowledge, checked onchain." }]} className="muted-line" startDelay={0.25} />
         </h2>
         <div className="lx-cards">
           <Reveal className="lx-card lx-card-img">
