@@ -1,6 +1,6 @@
 # Obelisk on Robinhood Chain mainnet
 
-Deployed on 23 September 2026; moved to policy v3 on 24 September 2026. This document records the mainnet setup, how it was rehearsed, and what is still open.
+Deployed on 23 September 2026; moved to policy v3 and to vault v4 (onchain limits) on 24 September 2026. This document records the mainnet setup, how it was rehearsed, and what is still open.
 
 ## Obelisk contracts (chain 4663)
 
@@ -8,10 +8,11 @@ See [`contracts/deployments/robinhood.json`](../contracts/deployments/robinhood.
 
 | Contract | Address |
 |---|---|
-| ObeliskVaultFactory (policy v3) | `0x4530A51f8efB1A3Fc3d57e14db1965A1038Bb15c` |
+| ObeliskVaultFactory (vault v4, policy v3) | `0x1dBA1119DB33533fc10966E5f0806290Eae435Cd` |
 | AgentRegistry | `0xd79210b37c548584f87d66B07C8296db75678FE8` |
 | SP1 Groth16 verifier v6.1.0 | `0x735A8EbC91e7ccC02A7275e13F4e02eab93cB5CA` |
 | Policy program verification key (v3) | `0x002c72fab9e46ad169621189cf082ed7a585af657aa44c4ef657d3d0621c53bd` |
+| Earlier factory (vault v3, policy v3, legacy) | `0x4530A51f8efB1A3Fc3d57e14db1965A1038Bb15c` |
 | Earlier factory (policy v2, legacy) | `0xadDe5A5cF722Ef1e6a55fB15d84Fd4A9a71a2429` |
 | Earlier program key (v2) | `0x005837e0791c16ed77947585ad983c678684500b27c6ff2ea54b700637f929bb` |
 
@@ -26,7 +27,7 @@ owner moves them to the v3 program with **Update rules** in the app (`setPolicy`
 Rehearsed first on a mainnet fork: the factory deploy, the migration of an existing vault, and a full agent run with
 two real Groth16 proofs (approve, then swap 50 USDG for 0.0187 ETH).
 
-## Vault v4: onchain limits (prepared 24 September 2026)
+## Vault v4: onchain limits (24 September 2026)
 
 The vault contract used to check the proof but hold no copy of the spending rules (self-audit F-17). v4 vaults also
 check the call and measure how much of the limited token leaves, per call and per day, against caps stored in the
@@ -34,6 +35,10 @@ vault (docs/spec.md §5). The SP1 program and its key do not change, so only a n
 (`scripts/upgrade-mainnet-vault-v4.sh`, which runs `DeployFactory.s.sol` with `SAME_PROGRAM=true`). v3 vaults keep
 working; their owners move with **Move to a vault with onchain limits** in the app (a new vault with the same rules,
 then the funds). Contracts cannot be upgraded in place, so this is the only way to get the new checks.
+
+Deployed as `0x1dBA1119DB33533fc10966E5f0806290Eae435Cd` (tx `0x8393cb18ca02ee10edf557f3f7c0b83d1ac27df9e3a0f7f5c3b472981a840cd3`,
+block 71,403,610). Rehearsed first on a mainnet fork: a v4 vault ran an approval and a 50 USDG swap with two real
+Groth16 proofs, and both passed the onchain limits.
 
 ## External addresses, checked onchain
 
