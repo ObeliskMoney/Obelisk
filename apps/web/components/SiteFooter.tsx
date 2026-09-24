@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { IS_MAINNET, REPO_URL, X_URL } from "@/lib/network";
+import { IS_MAINNET, OBSK, REPO_URL, X_URL } from "@/lib/network";
+import { CopyAddress } from "./CopyAddress";
 import { LogoMark } from "./Logo";
 import { FooterHeadline } from "./FooterHeadline";
 import { ActionLink } from "./ui";
 
 const COLS: { h: string; links: [string, string][] }[] = [
-  { h: "Product", links: [["App", "/app"], ["Activity", "/activity"], ["Status", "/status"]] },
+  { h: "Product", links: [["App", "/app"], ["Activity", "/activity"], ["Status", "/status"], [`$${OBSK.ticker} token`, "/token"]] },
   { h: "Trust", links: [["Security", "/security"], ["Contracts", "/security#contracts"], ["Source code", REPO_URL]] },
   { h: "Help", links: [["How to use it", "/guide"], ["FAQ", "/#faq"]] },
   { h: "Follow", links: [["X (@Obeliskdotmoney)", X_URL], ["GitHub", "https://github.com/ObeliskMoney"]] },
@@ -41,6 +42,9 @@ export function SiteFooter() {
             <p className="muted small">A vault for AI agents with spending limits proven in zero knowledge and checked onchain.</p>
             <p className="foot-status small">
               <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Robinhood Chain" : "Robinhood Chain testnet"}
+            </p>
+            <p className="foot-ca small">
+              <Link href="/token">${OBSK.ticker}</Link> <CopyAddress address={OBSK.address} short />
             </p>
           </div>
           {COLS.map((c) => (

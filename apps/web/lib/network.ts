@@ -13,6 +13,15 @@ const dep = deployment as Dep;
 export const X_URL = "https://x.com/Obeliskdotmoney";
 export const REPO_URL = "https://github.com/ObeliskMoney/Obelisk";
 
+/** The official Obelisk token on Robinhood Chain mainnet. This site and @Obeliskdotmoney are the only sources for it. */
+export const OBSK = {
+  ticker: "OBSK",
+  name: "OBELISK",
+  address: "0x909b27ce60eab5c6bf7688acd8e5026106828f02",
+  supply: "1,000,000,000",
+  decimals: 18,
+} as const;
+
 /** Uniswap QuoterV2, used to suggest a price limit when a vault is created. Absent on mock deployments. */
 export const QUOTER = dep.quoter as `0x${string}` | undefined;
 

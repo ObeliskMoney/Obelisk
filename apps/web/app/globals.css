@@ -520,3 +520,10 @@ ul.plain { padding-left: 18px; margin: 6px 0 12px; }
 .row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
 ul.plain li.row-between { list-style: none; margin-left: -18px; }
 .btn.small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
+
+/* Token contract address with a copy button (/token, footer). */
+.copy-addr { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.copy-addr .mono { overflow-wrap: anywhere; }
+.copy-addr .btn.small { min-height: 30px; padding: 4px 10px; font-size: 13px; }
+.foot-ca { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--muted); }
+.foot-ca a { color: var(--ink); font-weight: 600; }
