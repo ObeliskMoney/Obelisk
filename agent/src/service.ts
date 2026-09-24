@@ -22,6 +22,7 @@ import {
   type VaultRecord,
 } from "@obelisk/shared";
 import type { ObeliskAgent, TaskResult, VaultCtx } from "./agent.js";
+import type { Turn } from "./llm.js";
 
 const SIG_WINDOW_SECS = 300;
 /** A real proof can take a while: cap the queue so one user cannot block everyone. */
@@ -46,7 +47,14 @@ interface TaskRow {
   status: string;
   source: string;
   job_id: string | null;
+  reply?: string | null;
+  created_at?: string;
+  agent_key?: string | null;
 }
+
+/** Conversation memory: the last few finished exchanges from the last half hour. */
+const HISTORY_TURNS = 3;
+const HISTORY_WINDOW_MS = 30 * 60_000;
 
 interface AgentKeyRow {
   id: string;
@@ -258,7 +266,7 @@ export class ObeliskService {
     this.pending++;
     this.pendingByVault.set(key, (this.pendingByVault.get(key) ?? 0) + 1);
     this.queue = this.queue
-      .then(() => this.run(row.id, ctx, row.task, extra.actions))
+      .then(() => this.run(row.id, ctx, row.task, extra.actions, { source, agentKey: extra.agentKey }))
       .catch((e) => console.error("[task]", e))
       .finally(() => {
         this.pending--;
@@ -267,13 +275,39 @@ export class ObeliskService {
     return row;
   }
 
-  private async run(id: string, ctx: VaultCtx, task: string, actions?: AgentAction[]): Promise<TaskResult | undefined> {
+  /**
+   * Earlier exchanges of the same conversation, oldest first: the owner's chat for owner requests, and each agent
+   * key's own requests for that key. Scheduled jobs and structured calls have no conversation.
+   */
+  private async history(id: string, vault: string, who: { source: string; agentKey?: string }): Promise<Turn[]> {
+    if (who.source === "job") return [];
+    const filter: Record<string, string> = { vault: vault.toLowerCase(), source: who.source };
+    if (who.agentKey) filter.agent_key = who.agentKey.toLowerCase();
+    const rows = await this.db
+      .select<TaskRow & Record<string, unknown>>("tasks", filter, { order: "created_at.desc", limit: 10 })
+      .catch(() => []);
+    const since = Date.now() - HISTORY_WINDOW_MS;
+    return rows
+      .filter((r) => r.id !== id && r.status === "done" && r.reply && Date.parse(r.created_at ?? "") >= since)
+      .slice(0, HISTORY_TURNS)
+      .reverse()
+      .map((r) => ({ request: r.task.slice(0, 500), reply: r.reply!.slice(0, 600) }));
+  }
+
+  private async run(
+    id: string,
+    ctx: VaultCtx,
+    task: string,
+    actions?: AgentAction[],
+    who: { source: string; agentKey?: string } = { source: "job" },
+  ): Promise<TaskResult | undefined> {
     const set = (patch: Record<string, unknown>) =>
       this.db.update("tasks", { id }, { ...patch, updated_at: new Date().toISOString() });
     try {
       const r = await this.agent.runTask(ctx, task, {
         taskId: id,
         actions,
+        history: actions ? [] : await this.history(id, ctx.address, who),
         onPhase: (status) => void set({ status }),
       });
       await set({ status: "done", reply: r.reply || null, result: r });

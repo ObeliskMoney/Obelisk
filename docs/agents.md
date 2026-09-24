@@ -89,7 +89,9 @@ Base URL: `https://www.obelisk.cash/api/agent`.
 - `actions` is a JSON **string** (the exact text you sign). Up to 5 actions: `{"type":"status"}`,
   `{"type":"swap","amount":"2"}`, `{"type":"pay","to":"0x...","amount":"10"}`. Amounts are decimal strings in the
   stablecoin, up to 6 decimals. Instead of `actions` you may send `task` with free text, for example
-  `"swap 2 USDG to ETH"`, which the Obelisk agent interprets.
+  `"swap 2 USDG to ETH"`, which the Obelisk agent interprets. Free-text tasks from one key see that key's last three
+  finished exchanges from the past 30 minutes, so a follow-up such as `"yes"` refers to the agent's last offer.
+  Structured `actions` never use this memory.
 - `ts` is the current Unix time in seconds; a signature is valid for 5 minutes and only once.
 - `signature` is an EIP-191 `personal_sign` by the agent key over exactly this text (lines joined with `\n`, vault
   in lowercase, `content` is the `actions` string or the `task` text):

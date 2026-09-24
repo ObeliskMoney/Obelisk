@@ -24,7 +24,7 @@ import {
   type ProverResult,
 } from "@obelisk/shared";
 import type { AgentAction } from "@obelisk/shared";
-import { detectLanguage, type Action, type Plan, type Planner, type Replier, type ReplyFacts } from "./llm.js";
+import { languageFor, type Action, type Plan, type Planner, type Replier, type ReplyFacts, type Turn } from "./llm.js";
 
 /** docs/agents.md: the public action names map onto the planner's tools. */
 function toAction(a: AgentAction): Action {
@@ -341,12 +341,20 @@ export class ObeliskAgent {
    * The message the owner reads, written after the actions ran so it can say what actually happened. Only for
    * requests in natural language; structured calls from external agents keep the fixed summary.
    */
-  private async finalReply(v: VaultCtx, task: string, plan: Plan, steps: StepResult[], fallback: string): Promise<string> {
+  private async finalReply(
+    v: VaultCtx,
+    task: string,
+    plan: Plan,
+    steps: StepResult[],
+    fallback: string,
+    history: Turn[],
+  ): Promise<string> {
     if (!this.d.replier || !plan.actions.length) return fallback;
     try {
       const facts: ReplyFacts = {
         request: task,
-        language: detectLanguage(task),
+        language: languageFor(task, history),
+        history,
         plannerNote: plan.reply,
         token: this.symbol,
         vault: await this.vaultFacts(v),
@@ -367,7 +375,14 @@ export class ObeliskAgent {
   async runTask(
     v: VaultCtx,
     task: string,
-    opts: { force?: boolean; taskId?: string; onPhase?: (p: string) => void; actions?: AgentAction[] } = {},
+    opts: {
+      force?: boolean;
+      taskId?: string;
+      onPhase?: (p: string) => void;
+      actions?: AgentAction[];
+      /** Earlier exchanges of this conversation, oldest first (free-text requests only). */
+      history?: Turn[];
+    } = {},
   ): Promise<TaskResult> {
     this.taskId = opts.taskId;
     opts.onPhase?.("planning");
@@ -378,7 +393,7 @@ export class ObeliskAgent {
     // Structured actions from an external agent skip the language model entirely.
     const plan: Plan = opts.actions
       ? { actions: opts.actions.map(toAction), reply: "", model: "structured" }
-      : await this.d.planner(task, { recipients, token: this.symbol });
+      : await this.d.planner(task, { recipients, token: this.symbol, history: opts.history ?? [] });
     const steps: StepResult[] = [];
     let reply = plan.reply;
     for (const action of plan.actions) {
@@ -435,7 +450,7 @@ export class ObeliskAgent {
         }
       }
     }
-    if (!opts.actions) reply = await this.finalReply(v, task, plan, steps, reply);
+    if (!opts.actions) reply = await this.finalReply(v, task, plan, steps, reply, opts.history ?? []);
     return { task, vault: v.address, model: plan.model, reply, actions: plan.actions, steps };
   }
 }
