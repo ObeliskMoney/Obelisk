@@ -4,7 +4,7 @@
 //! 1. runs a native pre-check with exactly the same logic as the SP1 program;
 //! 2. runs the program in the zkVM (`--mode execute`) or produces a Groth16 proof (`--mode prove`).
 //!
-//! The prover mode is set by the `SP1_PROVER` env var (`mock` | `cpu` | `network`).
+//! The prover mode is set by the `SP1_PROVER` env var (`mock` | `cpu` | `cuda` | `network`); `cuda` needs a build with `--features cuda`.
 //! Output is always one JSON object on stdout. Exit code 2 = the intent breaks the policy.
 //!
 //! ```shell
@@ -115,6 +115,11 @@ fn main() {
         println!("{base}");
         return;
     }
+
+    // The CUDA prover releases GPU resources from destructors through Tokio, so keep a runtime entered
+    // for the rest of main (declared first, so it is dropped after the client and proving key).
+    let runtime = tokio::runtime::Runtime::new().expect("failed to start the Tokio runtime");
+    let _runtime = runtime.enter();
 
     let mut stdin = SP1Stdin::new();
     stdin.write(&input);

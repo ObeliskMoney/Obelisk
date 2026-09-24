@@ -8,6 +8,11 @@
  *   POST /prove       synchronous (mock / dev mode only)
  *
  * The mode is set by SP1_PROVER (mock | cpu | network). Proofs are processed one at a time.
+ *
+ * GPU offload (optional): with PROVER_GPU_SSH set to an SSH destination, proofs run on that machine's GPU
+ * (its authorized key is forced to the prover, see docs/gpu-prover.md). If the GPU machine cannot be reached,
+ * fails, or takes longer than PROVER_GPU_TIMEOUT_SECS, the proof falls back to the local prover, so a
+ * stopped GPU rental only makes proofs slower. Rules checks always run locally.
  */
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -21,6 +26,8 @@ loadEnv(ROOT);
 const BIN = process.env.PROVER_BIN ?? join(ROOT, "zk", "target", "release", "obelisk-prover");
 const MODE = process.env.SP1_PROVER ?? "mock";
 const port = Number(process.env.PROVER_PORT ?? 8081);
+const GPU_SSH = process.env.PROVER_GPU_SSH;
+const GPU_TIMEOUT_MS = Number(process.env.PROVER_GPU_TIMEOUT_SECS ?? 600) * 1000;
 
 interface Job {
   status: "queued" | "running" | "done" | "error";
@@ -33,12 +40,14 @@ const jobs = new Map<string, Job>();
 const order: string[] = [];
 let queue: Promise<unknown> = Promise.resolve();
 
-function prove(input: string, mode: "prove" | "check" = "prove"): Promise<string> {
+function run(cmd: string, args: string[], input: string, timeoutMs?: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const p = spawn(BIN, ["--mode", mode, "--input", "-"], {
+    const p = spawn(cmd, args, {
       env: { ...process.env, SP1_PROVER: MODE },
       stdio: ["pipe", "pipe", "pipe"],
     });
+    const timer = timeoutMs ? setTimeout(() => p.kill("SIGKILL"), timeoutMs) : undefined;
+    p.on("close", () => clearTimeout(timer));
     let out = "";
     let err = "";
     p.stdout.on("data", (d) => (out += d));
@@ -53,6 +62,18 @@ function prove(input: string, mode: "prove" | "check" = "prove"): Promise<string
     });
     p.stdin.end(input);
   });
+}
+
+async function prove(input: string, mode: "prove" | "check" = "prove"): Promise<string> {
+  const local = () => run(BIN, ["--mode", mode, "--input", "-"], input);
+  if (mode !== "prove" || !GPU_SSH) return local();
+  try {
+    const sshArgs = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ServerAliveInterval=30", GPU_SSH, "prove"];
+    return await run("ssh", sshArgs, input, GPU_TIMEOUT_MS);
+  } catch (e) {
+    console.log(`[prover] GPU unavailable, proving locally: ${(e as Error).message.slice(0, 200)}`);
+    return local();
+  }
 }
 
 function enqueue(input: string): string {
@@ -93,7 +114,7 @@ createServer(async (req, res) => {
     const running = [...jobs.values()].filter((j) => j.status === "running" || j.status === "queued").length;
     const done = [...jobs.values()].filter((j) => j.status === "done" && j.startedAt && j.finishedAt);
     const avg = done.length ? done.reduce((s, j) => s + (j.finishedAt! - j.startedAt!), 0) / done.length / 1000 : null;
-    return res.end(JSON.stringify({ ok: true, mode: MODE, pending: running, avgProofSecs: avg }));
+    return res.end(JSON.stringify({ ok: true, mode: MODE, gpu: !!GPU_SSH, pending: running, avgProofSecs: avg }));
   }
   if (req.method === "POST" && url === "/jobs") {
     return res.end(JSON.stringify({ id: enqueue(await readBody(req)) }));

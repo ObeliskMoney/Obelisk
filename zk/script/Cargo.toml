@@ -12,6 +12,10 @@ path = "src/bin/main.rs"
 name = "vkey"
 path = "src/bin/vkey.rs"
 
+[features]
+# GPU proving (SP1_PROVER=cuda): needs an NVIDIA GPU with 24 GB VRAM or more and the CUDA 12 runtime.
+cuda = ["sp1-sdk/cuda"]
+
 [dependencies]
 sp1-sdk = { version = "6.0.1", features = ["blocking", "native-gnark"] }
 serde_json = "1"
@@ -22,4 +26,5 @@ alloy-sol-types = { workspace = true }
 alloy-primitives = { workspace = true }
 obelisk-policy = { path = "../lib" }
 dotenv = "0.15"
+tokio = { version = "1", features = ["rt-multi-thread"] }
 
