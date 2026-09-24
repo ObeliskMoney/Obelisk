@@ -74,7 +74,14 @@ function show(t: Record<string, any>) {
 
 // 1. create the vault
 log(`user ${user.address} creates a vault (max 50/tx, 120/day, payee: Alex)`);
-const policy = buildPolicy(dep, { maxPerTx: parseUnits("50", 6), maxPerDay: parseUnits("120", 6), recipients: [friend] });
+// Price floor: at least 1e8 wei per USDC unit, i.e. the swap refuses any price above 10,000 USDC per ETH.
+const MIN_OUT_PER_IN = 10n ** 8n * 10n ** 18n;
+const policy = buildPolicy(dep, {
+  maxPerTx: parseUnits("50", 6),
+  maxPerDay: parseUnits("120", 6),
+  recipients: [friend],
+  minOutPerIn: MIN_OUT_PER_IN,
+});
 const cfg = await api("GET", "/config");
 let hash = await wallet.writeContract({
   address: dep.factory,

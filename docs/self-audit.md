@@ -36,6 +36,8 @@ This is a self-review, **not a professional audit**.
 | F-12 | Manual review | With `MockVerifier`, anyone holding an active agent key can bypass the policy | **By design for development.** Testnet and mainnet use `SP1VerifierGroth16`; `deployments/*.json` records `verifierKind`. |
 | F-13 | Manual review | Two intents proven at the same time use the same `spentBefore`, so the second reverts with `SpentMismatch` | **Accepted.** Safe (fails closed). It only affects liveness, and the agent processes intents sequentially. |
 | F-14 | Manual review | A task that would be refused still waited for proofs of its other steps (for example an approval) before being refused | **Fixed** in the agent. Rules are checked for every step first (under a second); proofs are only generated when all steps pass. |
+| F-15 | AI-assisted review (24 Sep 2026) | Policy v2 did not pin the swap pool or bound the price: a fully compromised agent could swap through a thin fee tier with `amountOutMinimum = 1` wei and lose up to `maxPerDay` a day to a manipulated price | **Fixed (policy v3).** `allowedFees` pins the pool and `minOutPerIn` sets an owner-chosen price floor per output token, checked in 512-bit math (9 new Rust tests). The app suggests 1.5x the current price. A static floor still allows a loss up to the gap between the floor and the market price, within `maxPerDay`. |
+| F-16 | AI-assisted review (24 Sep 2026) | The real-proof fixture came from an older program than the one mainnet accepts, so the real-proof tests did not cover the deployed program | **Fixed.** New fixture from the v3 program, plus two deploy gates: `test_FixtureIsForDeployedProgram` (Solidity) and `committed_elf_matches_mainnet_program_vkey` (Rust) fail whenever the committed ELF or fixture differs from the deployed program. |
 
 ## Verified security properties
 
@@ -50,6 +52,6 @@ This is a self-review, **not a professional audit**.
 - A professional audit of the contracts and the SP1 program.
 - Onchain (or oracle-based) TDX quote verification instead of the registry owner.
 - A timelock on `setPolicy` and limits on `withdraw` destinations.
-- ~~`tokenOut` whitelist~~ (done in policy v2). An oracle-based slippage bound inside the proof.
+- ~~`tokenOut` whitelist~~ (done in policy v2). ~~Pool and price bound~~ (done in policy v3 as a static, owner-set floor). An oracle-based bound that follows the market remains open.
 - Monitoring: alerts for repeated refusals or reverts from the same agent.
 - Move the registry owner key to a multisig.

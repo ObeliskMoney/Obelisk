@@ -21,12 +21,15 @@ import {
   buildPolicy,
   erc20Abi,
   factoryAbi,
+  minOutPerInToPriceCap,
   policyHash,
+  priceCapToMinOutPerIn,
+  quoterAbi,
   vaultAbi,
   type AgentConfig,
   type Policy,
 } from "@/lib/chain";
-import { CHAIN, EXPLORER, IS_MAINNET, MOCK_ASSETS, NETWORK_LABEL, TEE_SIMULATED, TOKEN } from "@/lib/network";
+import { CHAIN, EXPLORER, IS_MAINNET, MOCK_ASSETS, NETWORK_LABEL, QUOTER, TEE_SIMULATED, TOKEN } from "@/lib/network";
 
 const CHAIN_HEX = `0x${CHAIN.id.toString(16)}`;
 
@@ -181,7 +184,13 @@ export default function ObeliskApp() {
 
   const loadVaults = useCallback(async () => {
     if (!pub || !cfg || !account) return;
-    const list = (await pub.readContract({ address: cfg.factory, abi: factoryAbi, functionName: "vaultsOf", args: [account] })) as Address[];
+    // Vaults from earlier factories stay listed; the app offers to move them to the current rules program.
+    const lists = await Promise.all(
+      [cfg.factory, ...(cfg.legacyFactories ?? [])].map(
+        (f) => pub.readContract({ address: f, abi: factoryAbi, functionName: "vaultsOf", args: [account] }) as Promise<Address[]>,
+      ),
+    );
+    const list = [...lists.slice(1).flat(), ...lists[0]!];
     setVaults([...list].reverse());
     setSelected((s) => (s && list.includes(s) ? s : (list[list.length - 1] ?? null)));
   }, [pub, cfg, account]);
@@ -335,6 +344,7 @@ export default function ObeliskApp() {
           {creating || !vaults.length ? (
             <CreateVault
               cfg={cfg}
+              pub={pub}
               busy={busy}
               onCreate={(form) =>
                 run("create", async () => {
@@ -398,19 +408,34 @@ function Onboarding() {
 
 function CreateVault({
   cfg,
+  pub,
   busy,
   onCreate,
 }: {
   cfg: AgentConfig;
+  pub: PublicClient | null;
   busy: string | null;
-  onCreate: (f: { name: string; maxPerTx: bigint; maxPerDay: bigint; recipients: Address[]; labels: Record<string, string> }) => void;
+  onCreate: (f: {
+    name: string;
+    maxPerTx: bigint;
+    maxPerDay: bigint;
+    recipients: Address[];
+    minOutPerIn: bigint;
+    labels: Record<string, string>;
+  }) => void;
 }) {
   const [name, setName] = useState("Main vault");
   const [perTx, setPerTx] = useState(IS_MAINNET ? "10" : "100");
   const [perDay, setPerDay] = useState(IS_MAINNET ? "20" : "300");
+  const { maxPrice, setMaxPrice, spot } = usePriceLimit(pub, cfg);
   const [rows, setRows] = useState<{ label: string; address: string }[]>([]);
+
+  const priceOk = Number(maxPrice) > 0;
   const valid =
-    Number(perTx) > 0 && Number(perDay) >= Number(perTx) && rows.every((r) => isAddress(r.address, { strict: false }) && r.label.trim());
+    Number(perTx) > 0 &&
+    Number(perDay) >= Number(perTx) &&
+    priceOk &&
+    rows.every((r) => isAddress(r.address, { strict: false }) && r.label.trim());
 
   return (
     <div className="card pad">
@@ -432,7 +457,12 @@ function CreateVault({
           Max per day ({TOKEN})
           <input inputMode="decimal" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
         </label>
+        <label>
+          Highest ETH price the agent may pay ({TOKEN} per ETH)
+          <input inputMode="decimal" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+        </label>
       </div>
+      <PriceHint spot={spot} />
       <div className="section-title">People the agent may pay (optional)</div>
       {rows.map((r, i) => (
         <div className="form row" key={i}>
@@ -460,6 +490,7 @@ function CreateVault({
             maxPerTx: parseUnits(perTx, 6),
             maxPerDay: parseUnits(perDay, 6),
             recipients: rows.map((r) => r.address as Address),
+            minOutPerIn: priceCapToMinOutPerIn(parseUnits(maxPrice, 6)),
             labels: Object.fromEntries(rows.map((r) => [r.address, r.label.trim()])),
           })
         }
@@ -467,6 +498,43 @@ function CreateVault({
         {busy === "create" ? "Creating vault" : "Create vault (2 wallet prompts)"}
       </button>
     </div>
+  );
+}
+
+/**
+ * The "highest ETH price the agent may pay" field. Suggests 1.5x the current Uniswap price: a swap can then lose
+ * at most a third to a bad price, and ETH has to rise 50% before swaps are refused and the owner must raise it.
+ */
+function usePriceLimit(pub: PublicClient | null, cfg: AgentConfig) {
+  const [maxPrice, setMaxPrice] = useState(MOCK_ASSETS ? "10000" : "");
+  const [spot, setSpot] = useState<number | null>(null);
+  useEffect(() => {
+    if (!pub || !QUOTER || MOCK_ASSETS) return;
+    const amountIn = 100_000_000n; // 100 tokens
+    pub
+      .simulateContract({
+        address: QUOTER,
+        abi: quoterAbi,
+        functionName: "quoteExactInputSingle",
+        args: [{ tokenIn: cfg.usdc, tokenOut: cfg.weth, amountIn, fee: cfg.swapFee ?? 500, sqrtPriceLimitX96: 0n }],
+      })
+      .then(({ result }) => {
+        const price = 100 / Number(formatUnits(result[0], 18));
+        setSpot(price);
+        setMaxPrice((v) => v || String(Math.ceil((price * 1.5) / 100) * 100));
+      })
+      .catch(() => {});
+  }, [pub, cfg]);
+  return { maxPrice, setMaxPrice, spot };
+}
+
+function PriceHint({ spot }: { spot: number | null }) {
+  return (
+    <p className="muted small">
+      {spot ? `ETH is about ${Math.round(spot).toLocaleString("en-US")} ${TOKEN} now. ` : ""}
+      The agent cannot swap at a worse price than this, so a manipulated pool cannot drain the vault. If ETH rises
+      above it, swaps are refused until you raise the limit.
+    </p>
   );
 }
 
@@ -499,6 +567,8 @@ function VaultView({
   const [amount, setAmount] = useState("");
   const [jobText, setJobText] = useState(`swap 10 ${TOKEN} to ETH`);
   const [jobEvery, setJobEvery] = useState("1440");
+  const [onchain, setOnchain] = useState<{ vkey: string; policyHash: string } | null>(null);
+  const { maxPrice, setMaxPrice, spot } = usePriceLimit(pub, cfg);
 
   const refresh = useCallback(async () => {
     const day = BigInt(Math.floor(Date.now() / 86_400_000));
@@ -511,6 +581,11 @@ function VaultView({
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "agentAllowed", args: [cfg.agent] }),
     ]);
     setBal({ vUsdc, vWeth, wUsdc, wEth, spent, allowed });
+    const [vkey, ph] = await Promise.all([
+      pub.readContract({ address: vault, abi: vaultAbi, functionName: "programVKey" }),
+      pub.readContract({ address: vault, abi: vaultAbi, functionName: "policyHash" }),
+    ]);
+    setOnchain({ vkey, policyHash: ph });
     const [t, j, vs] = await Promise.all([
       api<TaskRow[]>("GET", `/tasks?vault=${vault}`),
       api<JobRow[]>("GET", `/jobs?vault=${vault}`),
@@ -542,6 +617,76 @@ function VaultView({
   const pct = bal && limit ? Math.min(100, Number((bal.spent * 100n) / limit)) : 0;
   // Example amount for chips and placeholder: half the per-transaction limit, so it is not refused outright.
   const suggest = policy ? Math.max(1, Math.floor(Number(BigInt(policy.maxPerTx) / 2n) / 1e6)) : 5;
+
+  // A vault from before policy v3 runs an older program. The prover only runs the current one, so the owner moves
+  // the vault over: same limits and payees, plus a pool and a price limit, then the new rules go to the agent.
+  const outdated = !!(onchain && cfg.programVKey && onchain.vkey.toLowerCase() !== cfg.programVKey.toLowerCase());
+  const unsynced = !!(onchain && policy && policyHash(policy).toLowerCase() !== onchain.policyHash.toLowerCase());
+  const upgrade = () =>
+    run("upgrade", async () => {
+      if (!policy) return;
+      const next = buildPolicy(cfg, {
+        maxPerTx: BigInt(policy.maxPerTx),
+        maxPerDay: BigInt(policy.maxPerDay),
+        recipients: policy.allowedRecipients,
+        minOutPerIn: priceCapToMinOutPerIn(parseUnits(maxPrice, 6)),
+      });
+      const h = policyHash(next);
+      savePending(vault, { policy: next, labels: info?.labels ?? {}, name: info?.name ?? "" });
+      const hash = await wallet.writeContract({ ...common, address: vault, abi: vaultAbi, functionName: "setPolicy", args: [h, cfg.programVKey!] });
+      await pub.waitForTransactionReceipt({ hash });
+      await api("POST", "/vaults", { ...(await sign(vault, "vault:register", h)), policy: next, labels: info?.labels ?? {}, name: info?.name ?? "" });
+      savePending(vault, null);
+      await refresh();
+      return "Rules updated. The agent can use this vault again.";
+    });
+  const finish = () =>
+    run("upgrade", async () => {
+      if (!pending) return;
+      await api("POST", "/vaults", { ...(await sign(vault, "vault:register", policyHash(pending.policy))), ...pending });
+      savePending(vault, null);
+      await refresh();
+      return "Rules sent to the agent.";
+    });
+
+  if (info && policy && outdated) {
+    return (
+      <div className="card pad">
+        <h2>Update this vault's rules</h2>
+        <p className="muted">
+          Obelisk now also pins the exchange pool and a price limit for every swap. This vault was made before that, so
+          the agent cannot use it until you update its rules. Your limits and payees stay the same. Your funds are safe
+          and you can withdraw at any time.
+        </p>
+        <div className="form">
+          <label>
+            Highest ETH price the agent may pay ({TOKEN} per ETH)
+            <input inputMode="decimal" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
+          </label>
+        </div>
+        <PriceHint spot={spot} />
+        <button className="btn primary" disabled={!!busy || !(Number(maxPrice) > 0)} onClick={upgrade}>
+          {busy === "upgrade" ? "Updating rules" : "Update rules (2 wallet prompts)"}
+        </button>
+      </div>
+    );
+  }
+
+  if (info && unsynced && !outdated) {
+    return (
+      <div className="card pad">
+        <h2>Send the new rules to the agent</h2>
+        <p className="muted">The vault's rules changed onchain, but the agent still has the old ones.</p>
+        {pending && policyHash(pending.policy).toLowerCase() === onchain!.policyHash.toLowerCase() ? (
+          <button className="btn primary" disabled={!!busy} onClick={finish}>
+            {busy === "upgrade" ? "Sending" : "Send rules"}
+          </button>
+        ) : (
+          <p className="muted">This browser does not have the new rules. Update them again from the browser you used.</p>
+        )}
+      </div>
+    );
+  }
 
   if (info === null) {
     return (
@@ -769,6 +914,11 @@ function VaultView({
                     : `none, so the agent cannot send ${TOKEN} to anyone`}
                 </li>
                 <li>Swaps only into ETH through one approved exchange, with price protection, and the ETH returns to the vault</li>
+                {policy.minOutPerIn?.[0] && (
+                  <li>
+                    Never pays more than {fmt(minOutPerInToPriceCap(BigInt(policy.minOutPerIn[0])), 6, 0)} {TOKEN} per ETH
+                  </li>
+                )}
               </ul>
             )}
             <button

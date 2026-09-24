@@ -76,6 +76,7 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       chain: chainName,
       chainId: deployment.chainId,
       factory: deployment.factory,
+      legacyFactories: deployment.legacyFactories ?? [],
       registry: deployment.registry,
       usdc: deployment.usdc,
       weth: deployment.weth,

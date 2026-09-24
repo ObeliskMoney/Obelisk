@@ -9,6 +9,11 @@ export interface Deployment {
   vault: Address;
   registry: Address;
   factory: Address;
+  /**
+   * Earlier factories whose vaults are still served. Their owners must first move the vault to the current
+   * program with setPolicy (programVKey), since the prover only runs the current program.
+   */
+  legacyFactories?: Address[];
   verifier: Address;
   verifierKind: "mock" | "sp1-groth16";
   usdc: Address;

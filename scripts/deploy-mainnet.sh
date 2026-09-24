@@ -24,6 +24,8 @@ WETH=0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73
 ROUTER=0xcaf681a66d020601342297493863e78c959e5cb2
 QUOTER=0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7
 SWAP_FEE=100
+# Policy v3 price floor for the demo vault: least WETH wei per USDG unit, times 1e18 (1e30 / max USDG per ETH).
+MIN_OUT_PER_IN=${MIN_OUT_PER_IN:?set MIN_OUT_PER_IN, for example 187000000000000000000000000 for at most 5,348 USDG per ETH}
 
 [ "$(cast chain-id --rpc-url "$RPC")" = 4663 ] || { echo "the RPC is not Robinhood mainnet"; exit 1; }
 DEPLOYER=$(cast wallet address --private-key "$DEPLOYER_PRIVATE_KEY")
@@ -41,7 +43,7 @@ echo "vkey     $VKEY"
 MODE=""
 [ "${1:-}" = "--broadcast" ] && MODE="--broadcast --slow"
 (cd contracts && SP1_VERIFIER_VERSION=v6.1.0 PROGRAM_VKEY=$VKEY AGENT_ADDRESS=$AGENT CHAIN_NAME=robinhood \
-  TOKEN=$USDG WETH=$WETH ROUTER=$ROUTER QUOTER=$QUOTER TOKEN_SYMBOL=USDG SWAP_FEE=$SWAP_FEE \
+  TOKEN=$USDG WETH=$WETH ROUTER=$ROUTER QUOTER=$QUOTER TOKEN_SYMBOL=USDG SWAP_FEE=$SWAP_FEE MIN_OUT_PER_IN=$MIN_OUT_PER_IN \
   forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC" $MODE)
 # forge also writes deployments/robinhood.json during simulation; remove it so it is not mistaken for a real deploy.
 [ -z "$MODE" ] && { rm -f contracts/deployments/robinhood.json; echo "simulation OK. Run with --broadcast for the real deployment."; exit 0; }

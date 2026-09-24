@@ -15,6 +15,8 @@ export function policyHash(p: Policy): Hex {
         { type: "bytes4[]" },
         { type: "bool" },
         { type: "address[]" },
+        { type: "uint24[]" },
+        { type: "uint256[]" },
       ],
       [
         p.version,
@@ -26,6 +28,8 @@ export function policyHash(p: Policy): Hex {
         p.allowedSelectors,
         p.denyUnlimitedApprove,
         p.allowedTokensOut,
+        p.allowedFees,
+        p.minOutPerIn.map((x) => BigInt(x)),
       ],
     ),
   );

@@ -20,3 +20,4 @@ executor/data/
 
 # Demo video (Remotion) is kept locally, not published
 apps/demo-video/
+zk/target-next/

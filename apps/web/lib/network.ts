@@ -6,8 +6,11 @@
 import { defineChain } from "viem";
 import deployment from "./deployment.json";
 
-type Dep = typeof deployment & { tokenSymbol?: string; swapFee?: number; mockAssets?: boolean };
+type Dep = typeof deployment & { tokenSymbol?: string; swapFee?: number; mockAssets?: boolean; quoter?: string };
 const dep = deployment as Dep;
+
+/** Uniswap QuoterV2, used to suggest a price limit when a vault is created. Absent on mock deployments. */
+export const QUOTER = dep.quoter as `0x${string}` | undefined;
 
 export const IS_MAINNET = dep.chainId === 4663;
 

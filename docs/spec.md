@@ -51,7 +51,7 @@ is stored onchain.
 
 | Field                  | Type        | Notes |
 |------------------------|-------------|-------|
-| `version`              | `uint8`     | `2` (v1 had no `allowedTokensOut` and is no longer accepted by the program) |
+| `version`              | `uint8`     | `3` (v1 and v2 are no longer accepted by the program; v2 had no pool or price bound on swaps) |
 | `token`                | `address`   | The limited token (USDG on mainnet). All limits are in its smallest unit |
 | `maxPerTx`             | `uint256`   | Maximum spend per intent |
 | `maxPerDay`            | `uint256`   | Maximum spend per UTC day (`block.timestamp / 86400`) |
@@ -60,13 +60,15 @@ is stored onchain.
 | `allowedSelectors`     | `bytes4[]`  | Subset of the known selectors (§3) |
 | `denyUnlimitedApprove` | `bool`      | If `true`, `approve` is capped at `≤ maxPerDay` |
 | `allowedTokensOut`     | `address[]` | Tokens a swap may output (for example WETH) |
+| `allowedFees`          | `uint24[]`  | Uniswap fee tiers a swap may use; this pins the pool (for example `[100]`) |
+| `minOutPerIn`          | `uint256[]` | Price floor per `allowedTokensOut[i]`: the least `amountOut` per unit of `amountIn`, times `1e18`. Same length as `allowedTokensOut`, every entry above zero |
 
 ```
 policyHash = keccak256(abi.encode(
     version uint8, token address, maxPerTx uint256, maxPerDay uint256,
     allowedTargets address[], allowedRecipients address[],
     allowedSelectors bytes4[], denyUnlimitedApprove bool,
-    allowedTokensOut address[]
+    allowedTokensOut address[], allowedFees uint24[], minOutPerIn uint256[]
 ))
 ```
 
@@ -75,6 +77,7 @@ policyHash = keccak256(abi.encode(
 The program refuses (panics, so no proof exists) unless **every** rule holds.
 
 General:
+- the policy is well formed: every `allowedFees` entry fits in `uint24`, and `minOutPerIn` has one non-zero entry per `allowedTokensOut`
 - `value == 0`
 - `len(data) >= 4` and `selector ∈ allowedSelectors`
 - the length of `data` must match the selector's ABI **exactly** (odd calldata is refused)
@@ -85,7 +88,7 @@ Per selector (only these three are known):
 |---|---|---|---|---|
 | `0x095ea7b3` | `approve(address spender,uint256 amount)` | `target == token` | `spender ∈ allowedTargets`; if `denyUnlimitedApprove` then `amount ≤ maxPerDay` | `0` |
 | `0xa9059cbb` | `transfer(address to,uint256 amount)` | `target == token` | `to ∈ allowedRecipients` | `amount` |
-| `0x04e45aaf` | `exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96))` (Uniswap SwapRouter02) | `target ∈ allowedTargets` | `tokenIn == token`, `recipient == vault`, `tokenOut ∈ allowedTokensOut`, `amountOutMinimum > 0` | `amountIn` |
+| `0x04e45aaf` | `exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96))` (Uniswap SwapRouter02) | `target ∈ allowedTargets` | `tokenIn == token`, `recipient == vault`, `fee ∈ allowedFees`, `tokenOut == allowedTokensOut[k]`, `amountOutMinimum > 0`, `amountOutMinimum * 1e18 >= amountIn * minOutPerIn[k]` (computed in 512 bits) | `amountIn` |
 
 Limits:
 - `spend ≤ maxPerTx`

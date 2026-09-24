@@ -2,6 +2,7 @@
 # Mainnet dress rehearsal: the whole Obelisk stack on a fork of Robinhood Chain mainnet (anvil).
 # Real assets (USDG, WETH, Uniswap SwapRouter02 + QuoterV2), the real SP1 Groth16 verifier,
 # real proofs (SP1_PROVER=cpu, about 15 minutes each). No real funds are used.
+# The demo policy caps the ETH price at 4,100 USDG (MIN_OUT_PER_IN = 1e30 / 4100); override MIN_OUT_PER_IN to test others.
 #
 # Usage (on a machine that can reach a mainnet archive RPC):
 #   GROQ_API_KEY=... scripts/fork-rehearsal.sh "swap 50 USDG to ETH"
@@ -37,7 +38,7 @@ for _ in $(seq 60); do cast block-number --rpc-url $RPC >/dev/null 2>&1 && break
 
 (cd contracts && DEPLOYER_PRIVATE_KEY=$DEPLOYER_PK SP1_VERIFIER_VERSION=v6.1.0 PROGRAM_VKEY=$VKEY \
   AGENT_ADDRESS=$AGENT CHAIN_NAME=robinhood-fork TOKEN=$USDG WETH=$WETH ROUTER=$ROUTER QUOTER=$QUOTER \
-  TOKEN_SYMBOL=USDG SWAP_FEE=100 \
+  TOKEN_SYMBOL=USDG SWAP_FEE=100 MIN_OUT_PER_IN=${MIN_OUT_PER_IN:-243902439024390243902439025} \
   forge script script/Deploy.s.sol:Deploy --rpc-url $RPC --broadcast -q)
 DEP=contracts/deployments/robinhood-fork.json
 VAULT=$(jq -r .vault $DEP); REGISTRY=$(jq -r .registry $DEP)

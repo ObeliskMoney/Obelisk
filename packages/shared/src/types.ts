@@ -2,7 +2,7 @@ import type { Address, Hex } from "viem";
 
 /** docs/spec.md §2. Amounts in the token's smallest unit, stored as decimal strings. */
 export interface Policy {
-  version: 2;
+  version: 3;
   token: Address;
   maxPerTx: string;
   maxPerDay: string;
@@ -12,6 +12,10 @@ export interface Policy {
   denyUnlimitedApprove: boolean;
   /** Tokens a swap may output (policy v2). */
   allowedTokensOut: Address[];
+  /** Uniswap fee tiers a swap may use, which pins the pool (policy v3). */
+  allowedFees: number[];
+  /** Price floor per `allowedTokensOut[i]`: minimum amountOut per unit of amountIn, times 1e18 (policy v3). */
+  minOutPerIn: string[];
 }
 
 /** docs/spec.md §1. */
