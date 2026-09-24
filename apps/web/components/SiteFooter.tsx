@@ -1,15 +1,14 @@
 import Link from "next/link";
-import { IS_MAINNET } from "@/lib/network";
+import { IS_MAINNET, REPO_URL, X_URL } from "@/lib/network";
 import { LogoMark } from "./Logo";
 import { FooterHeadline } from "./FooterHeadline";
 import { ActionLink } from "./ui";
 
-const REPO = "https://github.com/ObeliskMoney/Obelisk";
-
 const COLS: { h: string; links: [string, string][] }[] = [
   { h: "Product", links: [["App", "/app"], ["Activity", "/activity"], ["Status", "/status"]] },
-  { h: "Trust", links: [["Security", "/security"], ["Contracts", "/security#contracts"], ["Source code", REPO]] },
+  { h: "Trust", links: [["Security", "/security"], ["Contracts", "/security#contracts"], ["Source code", REPO_URL]] },
   { h: "Help", links: [["How to use it", "/guide"], ["FAQ", "/#faq"]] },
+  { h: "Follow", links: [["X (@Obeliskdotmoney)", X_URL], ["GitHub", "https://github.com/ObeliskMoney"]] },
 ];
 
 export function SiteFooter() {

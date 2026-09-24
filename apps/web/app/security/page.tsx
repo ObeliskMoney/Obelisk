@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import deployment from "@/lib/deployment.json";
-import { EXPLORER, NETWORK_LABEL, TEE_SIMULATED, TOKEN } from "@/lib/network";
+import { EXPLORER, NETWORK_LABEL, REPO_URL as REPO, TEE_SIMULATED, TOKEN } from "@/lib/network";
 
 export const metadata: Metadata = {
   title: "Security",
   description: "How Obelisk keeps an AI agent inside your limits, the contracts it runs on, and what is not finished yet.",
 };
 
-const REPO = "https://github.com/ObeliskMoney/Obelisk";
-
 const CONTRACTS: [string, string, string][] = [
   ["Vault factory", deployment.factory, "Creates vaults and records who owns them."],
+  ...(deployment.legacyFactories ?? []).map(
+    (f): [string, string, string] => ["Earlier vault factory", f, "Made vaults before policy v3. Their owners move them to the current rules in the app."],
+  ),
   ["Agent registry", deployment.registry, "Lists agent keys that passed the attestation check."],
   ["Proof verifier", deployment.verifier, "Succinct SP1 Groth16 verifier. Checks every proof."],
   [`${TOKEN} token`, deployment.usdc, "The stablecoin your limits are counted in."],

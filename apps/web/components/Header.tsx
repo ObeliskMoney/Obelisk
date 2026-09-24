@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { IS_MAINNET } from "@/lib/network";
+import { IS_MAINNET, X_URL } from "@/lib/network";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LogoMark } from "./Logo";
 import { ActionLink } from "./ui";
+import { XIcon } from "./XIcon";
 
 const LINKS = [
   { href: "/#how", label: "How it works" },
@@ -40,6 +41,9 @@ export function Header() {
           <span className="nav-status">
             <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Beta on Robinhood Chain" : "Testnet live on Robinhood Chain"}
           </span>
+          <a className="nav-x" href={X_URL} target="_blank" rel="noreferrer" aria-label="Obelisk on X">
+            <XIcon size={16} />
+          </a>
           <ActionLink href="/app" variant="dark">
             Open app
           </ActionLink>
@@ -57,6 +61,9 @@ export function Header() {
               {l.label}
             </Link>
           ))}
+          <a href={X_URL} target="_blank" rel="noreferrer">
+            Follow on X
+          </a>
           <ActionLink href="/app">Create a vault</ActionLink>
         </div>
       )}

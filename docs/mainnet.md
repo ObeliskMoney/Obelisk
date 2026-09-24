@@ -1,6 +1,6 @@
 # Obelisk on Robinhood Chain mainnet
 
-Deployed on 23 September 2026. This document records the mainnet setup, how it was rehearsed, and what is still open.
+Deployed on 23 September 2026; moved to policy v3 on 24 September 2026. This document records the mainnet setup, how it was rehearsed, and what is still open.
 
 ## Obelisk contracts (chain 4663)
 
@@ -8,10 +8,23 @@ See [`contracts/deployments/robinhood.json`](../contracts/deployments/robinhood.
 
 | Contract | Address |
 |---|---|
-| ObeliskVaultFactory | `0xadDe5A5cF722Ef1e6a55fB15d84Fd4A9a71a2429` |
+| ObeliskVaultFactory (policy v3) | `0x4530A51f8efB1A3Fc3d57e14db1965A1038Bb15c` |
 | AgentRegistry | `0xd79210b37c548584f87d66B07C8296db75678FE8` |
 | SP1 Groth16 verifier v6.1.0 | `0x735A8EbC91e7ccC02A7275e13F4e02eab93cB5CA` |
-| Policy program verification key | `0x005837e0791c16ed77947585ad983c678684500b27c6ff2ea54b700637f929bb` |
+| Policy program verification key (v3) | `0x002c72fab9e46ad169621189cf082ed7a585af657aa44c4ef657d3d0621c53bd` |
+| Earlier factory (policy v2, legacy) | `0xadDe5A5cF722Ef1e6a55fB15d84Fd4A9a71a2429` |
+| Earlier program key (v2) | `0x005837e0791c16ed77947585ad983c678684500b27c6ff2ea54b700637f929bb` |
+
+## Policy v3 rollout (24 September 2026)
+
+Policy v2 did not pin the swap pool or bound the price (self-audit F-15). Policy v3 adds `allowedFees` and an owner-set
+price floor `minOutPerIn`. The contracts did not change, so only a new factory was deployed for the new program
+(`contracts/script/DeployFactory.s.sol`, run by `scripts/upgrade-mainnet-program.sh`; tx `0x8b4615e3598fb2044be03089c7101655257aded83087f70a08b23d9d3a074e43`, block 71,277,211),
+reusing the verifier and registry. The old factory is listed in `legacyFactories`: its vaults keep working after their
+owner moves them to the v3 program with **Update rules** in the app (`setPolicy`). Until then the agent refuses them.
+
+Rehearsed first on a mainnet fork: the factory deploy, the migration of an existing vault, and a full agent run with
+two real Groth16 proofs (approve, then swap 50 USDG for 0.0187 ETH).
 
 ## External addresses, checked onchain
 
