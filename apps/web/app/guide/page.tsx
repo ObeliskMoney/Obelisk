@@ -67,7 +67,7 @@ export default function Guide() {
       </ul>
       <p>
         A task that breaks your rules is refused within seconds and nothing is sent. A task that follows them waits for
-        its proof, about 15 minutes per step. Your first swap takes two steps (an allowance for the exchange, then the swap), and so does any swap after that allowance is used up.
+        its proof, usually a minute or two per step (up to about 15 minutes when the GPU prover is offline). Your first swap takes two steps (an allowance for the exchange, then the swap), and so does any swap after that allowance is used up.
         You can close the page while it runs.
       </p>
 
@@ -81,6 +81,31 @@ export default function Guide() {
         </li>
         <li>
           <b>Withdraw</b> your {TOKEN} or the swapped ETH back to your wallet whenever you want.
+        </li>
+      </ul>
+
+      <h2 id="agents">6. Use it from your own AI agent</h2>
+      <p>
+        Already have an agent (Claude, ChatGPT, a script or any framework)? Give it an <b>agent key</b> instead of your
+        wallet. In the app, open your vault, go to <b>Agent keys</b> and create one. The key can ask for swaps into ETH,
+        payments to your payees and the balance. It cannot withdraw, change the rules or add keys, and every action it
+        asks for still needs a proof that it follows your rules. Revoke it any time.
+      </p>
+      <ul className="plain-list">
+        <li>
+          <b>Claude Desktop, Cursor and other MCP clients:</b> add the <span className="mono">@obeliskmoney/mcp</span>{" "}
+          server with the key. The app shows the configuration when you create the key.
+        </li>
+        <li>
+          <b>TypeScript:</b> <span className="mono">npm install @obeliskmoney/agent-sdk</span>, then{" "}
+          <span className="mono">obelisk.swap(&quot;2&quot;)</span>.
+        </li>
+        <li>
+          <b>Any language:</b> a signed HTTP request per task.{" "}
+          <a href="https://github.com/ObeliskMoney/Obelisk/blob/main/docs/agents.md" target="_blank" rel="noreferrer">
+            Developer guide
+          </a>
+          .
         </li>
       </ul>
 

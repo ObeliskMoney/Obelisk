@@ -106,12 +106,33 @@ async function route(req: IncomingMessage, res: ServerResponse) {
       signature: b.signature,
     });
   }
+  // A task is either free text (`task`) or structured actions (`actions`, a JSON string: docs/agents.md).
+  // The owner's wallet or an active agent key of the vault signs exactly that string.
   if (m === "POST" && path === "/tasks") {
     const b = await body(req);
+    if (typeof b.actions === "string") {
+      const signer = await service.authorizeTask(b.vault, b.actions, Number(b.ts), b.signature);
+      const row = await service.enqueueActions(b.vault, b.actions, signer);
+      return { id: row.id, status: row.status, task: row.task, queue: service.queueDepth };
+    }
     if (typeof b.task !== "string" || !b.task.trim()) throw new HttpError(400, "the task is empty");
-    await service.authorize("task", b.vault, b.task, Number(b.ts), b.signature);
-    const row = await service.enqueue(b.vault, b.task, "chat");
+    const signer = await service.authorizeTask(b.vault, b.task, Number(b.ts), b.signature);
+    const row = await service.enqueue(b.vault, b.task, signer.kind === "agent-key" ? "agent" : "chat", undefined, {
+      agentKey: signer.kind === "agent-key" ? signer.address : undefined,
+    });
     return { id: row.id, status: row.status, queue: service.queueDepth };
+  }
+  if (m === "GET" && path === "/agent-keys") {
+    return service.listAgentKeys(url.searchParams.get("vault") ?? "");
+  }
+  if (m === "POST" && path === "/agent-keys") {
+    const b = await body(req);
+    return service.addAgentKey({ vault: b.vault, address: b.address, label: b.label, ts: Number(b.ts), signature: b.signature });
+  }
+  if (m === "POST" && path === "/agent-keys/revoke") {
+    const b = await body(req);
+    await service.revokeAgentKey({ vault: b.vault, address: b.address, ts: Number(b.ts), signature: b.signature });
+    return { ok: true };
   }
   if (m === "GET" && path === "/tasks") {
     const vault = url.searchParams.get("vault")?.toLowerCase();

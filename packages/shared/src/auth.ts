@@ -2,7 +2,7 @@
  * The message the vault owner's wallet signs to instruct the agent.
  * An identical copy lives in apps/web/lib/auth.ts (frontend); change both together.
  */
-export type AuthAction = "task" | "job:create" | "job:delete" | "vault:register";
+export type AuthAction = "task" | "job:create" | "job:delete" | "vault:register" | "agent-key:add" | "agent-key:revoke";
 
 export function authMessage(p: { vault: string; action: AuthAction; payload: string; ts: number }): string {
   return [

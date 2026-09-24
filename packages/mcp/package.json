@@ -1,0 +1,26 @@
+{
+  "name": "@obeliskmoney/mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets an AI agent spend from an Obelisk vault, inside the owner's onchain rules.",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "obelisk-mcp": "dist/index.js" },
+  "main": "dist/index.js",
+  "files": ["dist", "README.md"],
+  "repository": { "type": "git", "url": "https://github.com/ObeliskMoney/Obelisk", "directory": "packages/mcp" },
+  "homepage": "https://obelisk.cash",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@obeliskmoney/agent-sdk": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.9.0"
+  }
+}

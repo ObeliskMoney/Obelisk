@@ -1,0 +1,31 @@
+{
+  "name": "@obeliskmoney/agent-sdk",
+  "version": "0.1.0",
+  "description": "Let any AI agent spend from an Obelisk vault, inside the owner's onchain rules.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "repository": { "type": "git", "url": "https://github.com/ObeliskMoney/Obelisk", "directory": "packages/agent-sdk" },
+  "homepage": "https://obelisk.cash",
+  "keywords": ["ai-agents", "wallet", "spending-limits", "zero-knowledge", "sp1", "robinhood-chain"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "viem": "^2.37.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.9.0"
+  }
+}

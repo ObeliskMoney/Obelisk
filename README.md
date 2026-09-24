@@ -14,6 +14,7 @@ If a prompt injection tricks the agent into sending funds to an attacker, the po
 - **Security overview:** https://obelisk.cash/security
 - **Chain:** Robinhood Chain mainnet (4663), with the official **SP1 Groth16 verifier v6.1.0**. Addresses: [`contracts/deployments/robinhood.json`](contracts/deployments/robinhood.json)
 - **Docs:** [spec](docs/spec.md) · [threat model](docs/threat-model.md) · [self-audit](docs/self-audit.md) · [mainnet notes](docs/mainnet.md) · [user guide](docs/user-guide.md)
+- **Use it from your own AI agent:** [agent keys, SDK, MCP server and HTTP API](docs/agents.md)
 - **Standalone repos:** [obelisk-contracts](https://github.com/ObeliskMoney/obelisk-contracts) (Solidity) · [obelisk-zk](https://github.com/ObeliskMoney/obelisk-zk) (Rust, SP1 policy program)
 
 > Beta. The contracts have not had a third-party audit and the agent currently runs in the dstack simulator, not TDX hardware. Deposit only what you can afford to lose. See [docs/threat-model.md](docs/threat-model.md).

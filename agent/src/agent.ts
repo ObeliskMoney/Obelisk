@@ -23,7 +23,15 @@ import {
   type Policy,
   type ProverResult,
 } from "@obelisk/shared";
-import type { Action, Planner } from "./llm.js";
+import type { AgentAction } from "@obelisk/shared";
+import type { Action, Plan, Planner } from "./llm.js";
+
+/** docs/agents.md: the public action names map onto the planner's tools. */
+function toAction(a: AgentAction): Action {
+  if (a.type === "status") return { tool: "vault_status" };
+  if (a.type === "swap") return { tool: "swap_usdc_to_eth", amountUsdc: a.amount };
+  return { tool: "transfer_usdc", to: a.to, amountUsdc: a.amount };
+}
 import type { AgentIdentity } from "./identity.js";
 
 const USDC_DECIMALS = 6;
@@ -302,14 +310,21 @@ export class ObeliskAgent {
     return `Vault balance: ${f(usdcBal, 6)} ${s} and ${f(wethBal, 18)} ETH. Spent today: ${f(spent, 6)} of ${f(BigInt(v.policy.maxPerDay), 6)} ${s} (${f(left > 0n ? left : 0n, 6)} left).`;
   }
 
-  async runTask(v: VaultCtx, task: string, opts: { force?: boolean; taskId?: string; onPhase?: (p: string) => void } = {}): Promise<TaskResult> {
+  async runTask(
+    v: VaultCtx,
+    task: string,
+    opts: { force?: boolean; taskId?: string; onPhase?: (p: string) => void; actions?: AgentAction[] } = {},
+  ): Promise<TaskResult> {
     this.taskId = opts.taskId;
     opts.onPhase?.("planning");
     const recipients = Object.entries(v.labels).map(([address, label]) => ({ address, label }));
     for (const r of v.policy.allowedRecipients) {
       if (!recipients.some((x) => x.address.toLowerCase() === r.toLowerCase())) recipients.push({ address: r, label: "" });
     }
-    const plan = await this.d.planner(task, { recipients, token: this.symbol });
+    // Structured actions from an external agent skip the language model entirely.
+    const plan: Plan = opts.actions
+      ? { actions: opts.actions.map(toAction), reply: "", model: "structured" }
+      : await this.d.planner(task, { recipients, token: this.symbol });
     const steps: StepResult[] = [];
     let reply = plan.reply;
     for (const action of plan.actions) {

@@ -9,3 +9,4 @@ export * from "./chains.js";
 export * from "./db.js";
 export * from "./vaults.js";
 export * from "./auth.js";
+export * from "./agent-api.js";

@@ -14,6 +14,7 @@ import {
   type PublicClient,
   type WalletClient,
 } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { authMessage, type AuthAction } from "@/lib/auth";
 import { REASON } from "@/lib/reasons";
 import { lastWallet, rememberWallet, useWallets, type WalletOption } from "@/lib/wallets";
@@ -501,6 +502,129 @@ function CreateVault({
   );
 }
 
+// ------------------------------------------------------------------ agent keys
+
+interface AgentKeyRow {
+  address: string;
+  label: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+/**
+ * Keys for the owner's own AI agent (docs/agents.md). The browser makes the key, the owner's wallet allows it,
+ * and the private key is shown once. The key can only submit tasks; rules and proofs still decide what runs.
+ */
+function AgentKeys({
+  vault,
+  busy,
+  run,
+  sign,
+}: {
+  vault: Address;
+  busy: string | null;
+  run: (label: string, fn: () => Promise<string | void>) => Promise<void>;
+  sign: (vault: string, action: AuthAction, payload: string) => Promise<{ vault: string; ts: number; signature: `0x${string}` }>;
+}) {
+  const [keys, setKeys] = useState<AgentKeyRow[] | null>(null);
+  const [label, setLabel] = useState("My agent");
+  const [fresh, setFresh] = useState<{ privateKey: `0x${string}`; address: string } | null>(null);
+
+  const load = useCallback(() => {
+    api<AgentKeyRow[]>("GET", `/agent-keys?vault=${vault}`)
+      .then(setKeys)
+      .catch(() => setKeys([]));
+  }, [vault]);
+  useEffect(load, [load]);
+
+  const active = (keys ?? []).filter((k) => !k.revoked_at);
+  const env = fresh ? `OBELISK_AGENT_KEY=${fresh.privateKey}\nOBELISK_VAULT=${vault}` : "";
+  const mcp = fresh
+    ? JSON.stringify(
+        { mcpServers: { obelisk: { command: "npx", args: ["-y", "@obeliskmoney/mcp"], env: { OBELISK_AGENT_KEY: fresh.privateKey, OBELISK_VAULT: vault } } } },
+        null,
+        2,
+      )
+    : "";
+
+  return (
+    <div className="card pad">
+      <h2>Agent keys</h2>
+      <p className="muted small">
+        Let your own AI agent use this vault (Claude, ChatGPT, a script, any framework). A key can only ask for swaps,
+        payments to your payees and the balance. It cannot withdraw, change the rules or add keys, and everything it
+        asks for still needs a proof that it follows the rules above.{" "}
+        <Link href="/guide#agents">How to connect an agent</Link>
+      </p>
+
+      {fresh ? (
+        <div className="stack">
+          <p className="small">
+            <b>Copy this key now.</b> It is shown only once and is not stored by Obelisk. Give it to your agent as an
+            environment variable:
+          </p>
+          <pre className="mono small code-block">{env}</pre>
+          <p className="small">For Claude Desktop, Cursor or any MCP client:</p>
+          <pre className="mono small code-block">{mcp}</pre>
+          <button className="btn" onClick={() => void navigator.clipboard?.writeText(env)}>
+            Copy environment variables
+          </button>
+          <button className="btn ghost" onClick={() => setFresh(null)}>
+            I saved the key
+          </button>
+        </div>
+      ) : (
+        <div className="form row">
+          <input value={label} maxLength={40} onChange={(e) => setLabel(e.target.value)} aria-label="Key name" placeholder="Key name" />
+          <button
+            className="btn primary"
+            disabled={!!busy || !label.trim() || active.length >= 10}
+            onClick={() =>
+              run("agent-key", async () => {
+                const privateKey = generatePrivateKey();
+                const address = privateKeyToAccount(privateKey).address.toLowerCase();
+                const name = label.trim();
+                await api("POST", "/agent-keys", { ...(await sign(vault, "agent-key:add", `${address}|${name}`)), address, label: name });
+                setFresh({ privateKey, address });
+                load();
+                return "Agent key created. Copy it now; it is shown only once.";
+              })
+            }
+          >
+            {busy === "agent-key" ? "Creating key" : "Create agent key (1 signature)"}
+          </button>
+        </div>
+      )}
+
+      {active.length > 0 && (
+        <ul className="plain small">
+          {active.map((k) => (
+            <li key={k.address} className="row-between">
+              <span>
+                {k.label || "Agent key"} <span className="mono muted">{short(k.address)}</span>
+              </span>
+              <button
+                className="btn ghost small"
+                disabled={!!busy}
+                onClick={() =>
+                  run("agent-key", async () => {
+                    await api("POST", "/agent-keys/revoke", { ...(await sign(vault, "agent-key:revoke", k.address)), address: k.address });
+                    load();
+                    return `Key "${k.label || short(k.address)}" revoked. It cannot submit tasks any more.`;
+                  })
+                }
+              >
+                Revoke
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small">The emergency brake above also stops every agent key, because all tasks run through the Obelisk agent.</p>
+    </div>
+  );
+}
+
 /**
  * The "highest ETH price the agent may pay" field. Suggests 1.5x the current Uniswap price: a swap can then lose
  * at most a third to a bad price, and ETH has to rise 50% before swaps are refused and the owner must raise it.
@@ -779,7 +903,8 @@ function VaultView({
             {tasks.map((t) => (
               <div className="task-item" key={t.id}>
                 <div className="task-q">
-                  {t.source === "job" && <span className="tag">scheduled</span>} {t.task}
+                  {t.source === "job" && <span className="tag">scheduled</span>}
+                  {t.source === "agent" && <span className="tag">agent key</span>} {t.task}
                 </div>
                 <div className={`task-phase ${t.status}`}>{PHASE[t.status]}</div>
                 {t.reply && <div className="task-reply">{t.reply}</div>}
@@ -942,6 +1067,8 @@ function VaultView({
               on {NETWORK_LABEL}. <Link href={`/activity?vault=${vault}`}>History and proofs</Link>
             </p>
           </div>
+
+          <AgentKeys vault={vault} busy={busy} run={run} sign={sign} />
         </div>
       </div>
     </>
