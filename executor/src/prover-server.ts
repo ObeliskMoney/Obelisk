@@ -93,7 +93,8 @@ function enqueue(input: string): string {
         j.status = "error";
       }
       j.finishedAt = Date.now();
-      console.log(`[prover] ${MODE} job ${id} ${j.status} ${((j.finishedAt - j.startedAt) / 1000).toFixed(1)}s`);
+      const where = (j.result as { prover?: string } | undefined)?.prover === "cuda" ? "gpu" : MODE;
+      console.log(`[prover] ${where} job ${id} ${j.status} ${((j.finishedAt - j.startedAt) / 1000).toFixed(1)}s`);
     })
     .catch(() => undefined);
   // keep at most the last 500 jobs
