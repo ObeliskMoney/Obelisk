@@ -2,7 +2,7 @@
  * LLM planner: turns a natural-language request into a list of actions (tool calls).
  * LLM replier: after the actions ran, writes the message the owner reads, from the results only.
  * Uses an OpenAI-compatible chat-completions API, so the provider can be swapped through env:
- *   LLM_BASE_URL / LLM_MODEL / LLM_API_KEY          (utama, default Groq)
+ *   LLM_BASE_URL / LLM_MODEL / LLM_API_KEY          (primary, default Groq)
  *   LLM_FALLBACK_BASE_URL / LLM_FALLBACK_MODEL      (fallback, for example Ollama on the server)
  *   LLM_REPLY_MODEL                                  (model for the final reply; default gpt-oss-120b on Groq, else LLM_MODEL)
  *
