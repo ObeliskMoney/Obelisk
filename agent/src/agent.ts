@@ -41,6 +41,18 @@ const DEADLINE_SECS = BigInt(process.env.INTENT_TTL_SECS ?? 3 * 3600);
 // if it moves more than this, the swap reverts and the funds stay in the vault.
 const SLIPPAGE_BPS = BigInt(process.env.SWAP_SLIPPAGE_BPS ?? 200);
 
+/** Plain explanations of refusal codes for the final reply; the prover's own reasons are technical. */
+const PLAIN_REASON: Record<string, string> = {
+  EXCEEDS_PER_TX: "the amount is above the owner's limit per transaction",
+  EXCEEDS_PER_DAY: "the amount would go over what is left of today's limit",
+  RECIPIENT_NOT_ALLOWED: "that address is not one of the owner's approved payees",
+  SELECTOR_NOT_ALLOWED: "the vault's rules do not allow this kind of action",
+  MIN_OUT_BELOW_FLOOR:
+    "ETH is more expensive right now than the highest ETH price the owner set, so the swap was stopped instead of overpaying",
+  FEE_NOT_ALLOWED: "the swap would use an exchange pool the owner did not approve",
+  TOKEN_OUT_NOT_ALLOWED: "the vault may only swap into ETH",
+};
+
 /** The vault being served: address, policy (hash already verified), payee labels. */
 export interface VaultCtx {
   address: Address;
@@ -338,7 +350,12 @@ export class ObeliskAgent {
         plannerNote: plan.reply,
         token: this.symbol,
         vault: await this.vaultFacts(v),
-        steps: steps.map((s) => ({ what: s.label, result: s.status, code: s.code, reason: s.reason })),
+        steps: steps.map((s) => ({
+          what: s.label,
+          result: s.status,
+          code: s.code,
+          reason: (s.code && PLAIN_REASON[s.code.split(/[→ ]/)[0]!]) || s.reason,
+        })),
       };
       return await this.d.replier(facts);
     } catch (e) {
