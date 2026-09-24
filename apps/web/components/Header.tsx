@@ -39,7 +39,7 @@ export function Header() {
         </div>
         <div className="nav-right">
           <span className="nav-status">
-            <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Beta on Robinhood Chain" : "Testnet live on Robinhood Chain"}
+            <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Robinhood Chain" : "Robinhood Chain testnet"}
           </span>
           <a className="nav-x" href={X_URL} target="_blank" rel="noreferrer" aria-label="Obelisk on X">
             <XIcon size={16} />

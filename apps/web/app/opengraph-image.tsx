@@ -78,7 +78,7 @@ export default async function Image() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 24 }}>
             <div style={{ width: 12, height: 12, borderRadius: 12, background: "#F26522" }} />
-            <span>{IS_MAINNET ? "Beta on Robinhood Chain" : "Live on Robinhood Chain testnet"}</span>
+            <span>{IS_MAINNET ? "Robinhood Chain" : "Robinhood Chain testnet"}</span>
           </div>
           <div
             style={{

@@ -40,7 +40,7 @@ export function SiteFooter() {
             </span>
             <p className="muted small">A vault for AI agents with spending limits proven in zero knowledge and checked onchain.</p>
             <p className="foot-status small">
-              <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Beta on Robinhood Chain" : "Testnet live on Robinhood Chain"}
+              <span className="live-dot" aria-hidden /> {IS_MAINNET ? "Robinhood Chain" : "Robinhood Chain testnet"}
             </p>
           </div>
           {COLS.map((c) => (
