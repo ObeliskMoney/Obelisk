@@ -91,7 +91,7 @@ export default async function Image() {
               borderRadius: 3,
             }}
           >
-            obelisk-ledger.vercel.app
+            obelisk.cash
           </div>
         </div>
       </div>

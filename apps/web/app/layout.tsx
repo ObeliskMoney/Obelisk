@@ -9,7 +9,7 @@ const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://obelisk-ledger.vercel.app"),
+  metadataBase: new URL("https://obelisk.cash"),
   title: { default: "Obelisk: AI agent vaults with spending limits enforced onchain", template: "%s | Obelisk" },
   description:
     "Give an AI agent a vault with a per-transaction limit, a daily limit and an approved payee list. Every transaction needs a zero-knowledge proof that it follows your rules, or the contract rejects it.",

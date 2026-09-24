@@ -9,9 +9,9 @@ Obelisk is an onchain vault that only executes an AI agent's transaction when it
 
 If a prompt injection tricks the agent into sending funds to an attacker, the policy program cannot produce a proof. If the transaction is pushed onchain anyway, **the vault contract reverts**. The rules are enforced by math, not trust.
 
-- **App:** https://obelisk-ledger.vercel.app/app (create a vault, give tasks, schedule jobs). Guide: https://obelisk-ledger.vercel.app/guide
-- **Public activity log:** https://obelisk-ledger.vercel.app/activity · **Service status:** https://obelisk-ledger.vercel.app/status
-- **Security overview:** https://obelisk-ledger.vercel.app/security
+- **App:** https://obelisk.cash/app (create a vault, give tasks, schedule jobs). Guide: https://obelisk.cash/guide
+- **Public activity log:** https://obelisk.cash/activity · **Service status:** https://obelisk.cash/status
+- **Security overview:** https://obelisk.cash/security
 - **Chain:** Robinhood Chain mainnet (4663), with the official **SP1 Groth16 verifier v6.1.0**. Addresses: [`contracts/deployments/robinhood.json`](contracts/deployments/robinhood.json)
 - **Docs:** [spec](docs/spec.md) · [threat model](docs/threat-model.md) · [self-audit](docs/self-audit.md) · [mainnet notes](docs/mainnet.md) · [user guide](docs/user-guide.md)
 
@@ -53,8 +53,7 @@ User ──"swap 5 USDG to ETH"──► Agent (TEE) ── LLM → intent → s
 | Policy program | `zk/lib` (logic), `zk/program` (SP1 guest), `zk/script` (prover CLI) | Rust, SP1 v6 |
 | Agent runtime and public API (wallet auth, queue, schedules) | `agent/` | TypeScript, viem, dstack SDK, Groq / Ollama |
 | Executor, prover service (async jobs), test price keeper | `executor/` | TypeScript, viem |
-| Website, app, activity log, status | `apps/ledger/` | Next.js 15, Supabase |
-| Demo video | `apps/demo-video/` | Remotion |
+| Website, app, activity log, status | `apps/web/` | Next.js 15, Supabase |
 | VPS infrastructure (systemd, Caddy, dstack) | `deploy/` | Ubuntu 24.04 |
 | Shared types and hashing | `packages/shared/` | TypeScript |
 

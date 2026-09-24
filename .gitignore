@@ -17,3 +17,6 @@ next-env.d.ts
 *.tsbuildinfo
 .claude/
 executor/data/
+
+# Demo video (Remotion) is kept locally, not published
+apps/demo-video/

@@ -1,6 +1,6 @@
 /**
  * The message the vault owner's wallet signs to instruct the agent.
- * An identical copy lives in apps/ledger/lib/auth.ts (frontend); change both together.
+ * An identical copy lives in apps/web/lib/auth.ts (frontend); change both together.
  */
 export type AuthAction = "task" | "job:create" | "job:delete" | "vault:register";
 

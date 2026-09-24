@@ -4,7 +4,7 @@ Obelisk gives you an **AI agent that manages funds for you but can never break t
 
 > Obelisk runs on **Robinhood Chain mainnet** with USDG, a dollar stablecoin. It is beta software without a third-party audit. Deposit only what you can afford to lose.
 
-App: **https://obelisk-ledger.vercel.app/app**
+App: **https://obelisk.cash/app**
 
 ---
 
@@ -69,7 +69,7 @@ Click **Stop the agent (emergency brake)** under Safety. Once that transaction l
 
 ## 7. Checking the proofs
 
-Every agent action, including refusals, is listed on the **activity page** (https://obelisk-ledger.vercel.app/activity). Each entry shows:
+Every agent action, including refusals, is listed on the **activity page** (https://obelisk.cash/activity). Each entry shows:
 
 - which agent signed it,
 - the intent (target, function, amount),

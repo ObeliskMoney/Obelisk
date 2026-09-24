@@ -7,7 +7,7 @@
 		reverse_proxy 127.0.0.1:8080
 	}
 	handle {
-		respond "Obelisk agent API. See https://obelisk-ledger.vercel.app" 200
+		respond "Obelisk agent API. See https://obelisk.cash" 200
 	}
 	header {
 		Strict-Transport-Security "max-age=31536000"

@@ -35,7 +35,7 @@ That is why mainnet vaults limit **USDG**, not USDC.
    Because a proof takes about 15 minutes, a swap can revert if the price moves more than 2%. Funds stay safe; the swap just fails.
 4. **Fresh keys:** the mainnet deployer and executor keys were generated on the server and are not reused from testnet.
 5. **Honest TEE status:** the API reports `teeSimulated`, and the website says plainly that the agent still runs in the simulator.
-6. **Website:** every chain, token and explorer label comes from `apps/ledger/lib/deployment.json`.
+6. **Website:** every chain, token and explorer label comes from `apps/web/lib/deployment.json`.
 
 ## Fork rehearsal
 
@@ -72,6 +72,6 @@ Result on 23 Sep 2026 (fork around block 70.46 million, Alchemy archive RPC):
 2. On the server: `scripts/deploy-mainnet.sh` (simulation), then `scripts/deploy-mainnet.sh --broadcast`.
 3. On the server: `scripts/switch-vps-to-mainnet.sh` (backs up `.env`, sets `OBELISK_CHAIN=robinhood`, the archive
    mainnet RPC and the mainnet executor key, restarts the services and prints `/api/health`).
-4. Commit `contracts/deployments/robinhood.json` and copy it to `apps/ledger/lib/deployment.json`.
+4. Commit `contracts/deployments/robinhood.json` and copy it to `apps/web/lib/deployment.json`.
 5. Vercel: point the `RPC_URL` env (used by `/api/rpc`) at the mainnet RPC, then deploy to production. Check `/status`.
 6. Test with a small amount (for example 5 USDG) before announcing.
