@@ -21,6 +21,7 @@ import { lastWallet, rememberWallet, useWallets, type WalletOption } from "@/lib
 import {
   buildPolicy,
   erc20Abi,
+  wethAbi,
   factoryAbi,
   minOutPerInToPriceCap,
   policyHash,
@@ -480,7 +481,7 @@ function CreateVault({
       <p className="muted small">
         Agent <span className="mono">{short(cfg.agent)}</span> (
         {cfg.attestation === "tdx" ? (TEE_SIMULATED ? "dstack simulator" : "TDX enclave") : "dev key"}). Swaps go only
-        through {IS_MAINNET ? "Uniswap" : "the test exchange"}, into ETH, back to the vault.
+        through {IS_MAINNET ? "Uniswap" : "the test exchange"}, into ETH (held as WETH), back to the vault.
       </p>
       <button
         className="btn primary"
@@ -684,7 +685,7 @@ function VaultView({
   sign: (vault: string, action: AuthAction, payload: string) => Promise<{ vault: string; ts: number; signature: `0x${string}` }>;
 }) {
   const [info, setInfo] = useState<VaultRow | null | undefined>(undefined);
-  const [bal, setBal] = useState<{ vUsdc: bigint; vWeth: bigint; wUsdc: bigint; wEth: bigint; spent: bigint; allowed: boolean } | null>(null);
+  const [bal, setBal] = useState<{ vUsdc: bigint; vWeth: bigint; wUsdc: bigint; wWeth: bigint; wEth: bigint; spent: bigint; allowed: boolean } | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [text, setText] = useState("");
@@ -696,15 +697,16 @@ function VaultView({
 
   const refresh = useCallback(async () => {
     const day = BigInt(Math.floor(Date.now() / 86_400_000));
-    const [vUsdc, vWeth, wUsdc, wEth, spent, allowed] = await Promise.all([
+    const [vUsdc, vWeth, wUsdc, wWeth, wEth, spent, allowed] = await Promise.all([
       pub.readContract({ address: cfg.usdc, abi: erc20Abi, functionName: "balanceOf", args: [vault] }),
       pub.readContract({ address: cfg.weth, abi: erc20Abi, functionName: "balanceOf", args: [vault] }),
       pub.readContract({ address: cfg.usdc, abi: erc20Abi, functionName: "balanceOf", args: [account] }),
+      pub.readContract({ address: cfg.weth, abi: erc20Abi, functionName: "balanceOf", args: [account] }),
       pub.getBalance({ address: account }),
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "spentOnDay", args: [day] }),
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "agentAllowed", args: [cfg.agent] }),
     ]);
-    setBal({ vUsdc, vWeth, wUsdc, wEth, spent, allowed });
+    setBal({ vUsdc, vWeth, wUsdc, wWeth, wEth, spent, allowed });
     const [vkey, ph] = await Promise.all([
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "programVKey" }),
       pub.readContract({ address: vault, abi: vaultAbi, functionName: "policyHash" }),
@@ -848,7 +850,7 @@ function VaultView({
         </div>
         <div className="stat">
           <b>{fmt(bal?.vWeth, 18, 5)}</b>
-          <span>ETH in vault</span>
+          <span>WETH in vault (1 WETH = 1 ETH)</span>
         </div>
         <div className="stat">
           <b>
@@ -930,7 +932,7 @@ function VaultView({
           <div className="card pad">
             <h2>Funds</h2>
             <p className="muted small">
-              Your wallet: {fmt(bal?.wUsdc, 6, 2)} {TOKEN}, {fmt(bal?.wEth, 18, 5)} ETH for gas
+              Your wallet: {fmt(bal?.wUsdc, 6, 2)} {TOKEN}, {fmt(bal?.wWeth, 18, 5)} WETH, {fmt(bal?.wEth, 18, 5)} ETH
             </p>
             <div className="form row">
               <input inputMode="decimal" placeholder={`Amount in ${TOKEN}`} aria-label={`Amount in ${TOKEN}`} value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -966,11 +968,24 @@ function VaultView({
               <button
                 className="btn ghost"
                 disabled={!!busy}
-                onClick={() => tx("withdraw-eth", () => wallet.writeContract({ ...common, address: vault, abi: vaultAbi, functionName: "withdraw", args: [cfg.weth, account, bal.vWeth] }), "Swapped ETH withdrawn to your wallet.")}
+                onClick={() => tx("withdraw-weth", () => wallet.writeContract({ ...common, address: vault, abi: vaultAbi, functionName: "withdraw", args: [cfg.weth, account, bal.vWeth] }), "WETH withdrawn to your wallet. Unwrap it below to get ETH.")}
               >
-                Withdraw all ETH
+                Withdraw all WETH
               </button>
             )}
+            {!MOCK_ASSETS && bal && bal.wWeth > 0n && (
+              <button
+                className="btn ghost"
+                disabled={!!busy}
+                onClick={() => tx("unwrap", () => wallet.writeContract({ ...common, address: cfg.weth, abi: wethAbi, functionName: "withdraw", args: [bal.wWeth] }), "WETH unwrapped to ETH in your wallet.")}
+              >
+                Unwrap {fmt(bal.wWeth, 18, 5)} WETH to ETH
+              </button>
+            )}
+            <p className="muted small">
+              Swaps land in the vault as WETH, the ERC-20 form of ETH. Withdraw it, then unwrap it here to get ETH in
+              your wallet.
+            </p>
           </div>
 
           <div className="card pad">
@@ -1038,7 +1053,7 @@ function VaultView({
                     ? policy.allowedRecipients.map((r) => info?.labels?.[r] ?? short(r)).join(", ")
                     : `none, so the agent cannot send ${TOKEN} to anyone`}
                 </li>
-                <li>Swaps only into ETH through one approved exchange, with price protection, and the ETH returns to the vault</li>
+                <li>Swaps only into ETH through one approved exchange, with price protection, and the ETH returns to the vault as WETH</li>
                 {policy.minOutPerIn?.[0] && (
                   <li>
                     Never pays more than {fmt(minOutPerInToPriceCap(BigInt(policy.minOutPerIn[0])), 6, 0)} {TOKEN} per ETH

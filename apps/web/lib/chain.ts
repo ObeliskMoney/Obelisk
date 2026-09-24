@@ -24,6 +24,9 @@ export const erc20Abi = parseAbi([
   "function mint(address to, uint256 amount)",
 ]);
 
+/** Wrapped ETH: swaps land in the vault as WETH, and the owner unwraps it to native ETH from their own wallet. */
+export const wethAbi = parseAbi(["function withdraw(uint256 amount)"]);
+
 export const quoterAbi = parseAbi([
   "function quoteExactInputSingle((address tokenIn, address tokenOut, uint256 amountIn, uint24 fee, uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)",
 ]);

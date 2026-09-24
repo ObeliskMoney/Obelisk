@@ -9,13 +9,13 @@ the rules before the vault contract lets it through, so a tricked, buggy or leak
 
 | An agent key can | An agent key cannot |
 |---|---|
-| Swap the vault's stablecoin (USDG) to ETH, which stays in the vault | Withdraw anything from the vault |
+| Swap the vault's stablecoin (USDG) to ETH, which stays in the vault as WETH | Withdraw anything from the vault |
 | Pay an address you approved as a payee | Pay anyone else (the proof fails) |
 | Read the balance and what is left today | Change the rules, the price limit or the payees |
 | Submit free-text tasks for the Obelisk agent | Create or revoke keys, schedule tasks |
 
 The worst case for a stolen key is the same as for a prompt-injected agent: at most your daily limit in swaps into
-ETH that stays in the vault, or payments to payees you approved. Revoke a key in the app at any time; it stops
+ETH (as WETH) that stays in the vault, or payments to payees you approved. Revoke a key in the app at any time; it stops
 working at once. The emergency brake in the app stops every key.
 
 ## 1. Create a key
