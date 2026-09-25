@@ -15,6 +15,12 @@ const ROWS: [string, React.ReactNode][] = [
   ["Contract", <CopyAddress key="c" address={OBSK.address} />],
   ["Total supply", `${OBSK.supply} ${OBSK.ticker}`],
   ["Decimals", String(OBSK.decimals)],
+  [
+    "Trade",
+    <a key="p" href={OBSK.trade} target="_blank" rel="noreferrer">
+      pons launchpad
+    </a>,
+  ],
 ];
 
 export default function Token() {
@@ -39,6 +45,10 @@ export default function Token() {
       <p className="small">
         <a href={`${EXPLORER}/token/${OBSK.address}`} target="_blank" rel="noreferrer">
           View ${OBSK.ticker} on the Robinhood Chain explorer
+        </a>
+        {" · "}
+        <a href={OBSK.trade} target="_blank" rel="noreferrer">
+          Trade ${OBSK.ticker} on pons
         </a>
       </p>
 

@@ -20,6 +20,8 @@ export const OBSK = {
   address: "0x909b27ce60eab5c6bf7688acd8e5026106828f02",
   supply: "1,000,000,000",
   decimals: 18,
+  /** The launchpad page where $OBSK launched and trades. */
+  trade: "https://www.ponsfamily.com/launchpad/0x909B27ce60eab5C6bF7688ACd8E5026106828f02",
 } as const;
 
 /** Uniswap QuoterV2, used to suggest a price limit when a vault is created. Absent on mock deployments. */

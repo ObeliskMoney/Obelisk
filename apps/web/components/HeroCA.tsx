@@ -19,6 +19,12 @@ export function HeroCA() {
         <span className="hero-ca-label">
           Official contract<span className="hero-ca-chain"> · Robinhood Chain</span>
         </span>
+        <a className="hero-ca-trade" href={OBSK.trade} target="_blank" rel="noreferrer">
+          Trade<span className="hero-ca-chain"> on pons</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden>
+            <path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" strokeWidth="2.4" />
+          </svg>
+        </a>
         <Link className="hero-ca-more" href="/token">
           Details
         </Link>
